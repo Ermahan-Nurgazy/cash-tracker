@@ -1,0 +1,30 @@
+# Окружение
+.env
+*.local
+
+# Бэкенд
+/backend/vendor/
+/backend/runtime/*
+!/backend/runtime/.gitkeep
+/backend/web/assets/*
+!/backend/web/assets/.gitkeep
+/backend/tests/_output/
+/backend/.phpunit.result.cache
+/backend/composer.phar
+
+# Фронтенд
+/frontend/node_modules/
+/frontend/dist/
+/frontend/coverage/
+/frontend/*.tsbuildinfo
+
+# IDE и ОС
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log
+npm-debug.log*
