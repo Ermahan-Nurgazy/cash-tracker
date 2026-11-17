@@ -33,7 +33,16 @@ return [
             // Все ответы, включая ошибки, отдаём в JSON
             'format' => yii\web\Response::FORMAT_JSON,
         ],
-        // Компонент user (identityClass) добавим на шаге 3.1 вместе с аутентификацией
+        'user' => [
+            'identityClass' => 'app\models\User',
+            // Stateless API: идентификация только по Bearer-токену
+            'enableSession' => false,
+            'enableAutoLogin' => false,
+            'loginUrl' => null,
+        ],
+        'errorHandler' => [
+            'class' => 'app\components\ErrorHandler',
+        ],
         'db' => $db,
         'cache' => [
             'class' => 'yii\caching\FileCache',
@@ -44,6 +53,33 @@ return [
             'enableStrictParsing' => true,
             'rules' => [
                 'GET api/v1/health' => 'v1/health/index',
+                'api/v1/health' => 'v1/health/index',
+
+                'POST api/v1/auth/register' => 'v1/auth/register',
+                'api/v1/auth/register' => 'v1/auth/register',
+                'POST api/v1/auth/login' => 'v1/auth/login',
+                'api/v1/auth/login' => 'v1/auth/login',
+                'GET api/v1/auth/me' => 'v1/auth/me',
+                'api/v1/auth/me' => 'v1/auth/me',
+                'POST api/v1/auth/logout' => 'v1/auth/logout',
+                'api/v1/auth/logout' => 'v1/auth/logout',
+
+                'GET api/v1/reports/categories' => 'v1/report/categories',
+                'api/v1/reports/categories' => 'v1/report/categories',
+                'GET api/v1/reports/monthly' => 'v1/report/monthly',
+                'api/v1/reports/monthly' => 'v1/report/monthly',
+                'GET api/v1/reports/balances' => 'v1/report/balances',
+                'api/v1/reports/balances' => 'v1/report/balances',
+
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'pluralize' => false,
+                    'controller' => [
+                        'api/v1/categories' => 'v1/category',
+                        'api/v1/accounts' => 'v1/account',
+                        'api/v1/transactions' => 'v1/transaction',
+                    ],
+                ],
             ],
         ],
         'log' => [

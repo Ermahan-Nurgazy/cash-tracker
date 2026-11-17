@@ -6,6 +6,7 @@ use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
 
 /**
  * Пользователь.
@@ -22,11 +23,51 @@ use yii\db\ActiveRecord;
  * @property Category[] $categories
  * @property Transaction[] $transactions
  */
-class User extends ActiveRecord
+class User extends ActiveRecord implements IdentityInterface
 {
     public static function tableName(): string
     {
         return '{{%user}}';
+    }
+
+    public static function findIdentity($id): ?static
+    {
+        return static::findOne(['id' => $id]);
+    }
+
+    public static function findIdentityByAccessToken($token, $type = null): ?static
+    {
+        if (!is_string($token) || $token === '') {
+            return null;
+        }
+
+        return static::findOne(['access_token' => $token]);
+    }
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function getAuthKey(): string
+    {
+        return $this->auth_key;
+    }
+
+    public function validateAuthKey($authKey): bool
+    {
+        return hash_equals($this->auth_key, (string) $authKey);
+    }
+
+    /**
+     * Секреты никогда не попадают в JSON-ответы.
+     */
+    public function fields(): array
+    {
+        $fields = parent::fields();
+        unset($fields['password_hash'], $fields['auth_key'], $fields['access_token']);
+
+        return $fields;
     }
 
     public function behaviors(): array

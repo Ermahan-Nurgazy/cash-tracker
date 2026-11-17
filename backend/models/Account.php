@@ -25,6 +25,8 @@ use yii\db\ActiveRecord;
  */
 class Account extends ActiveRecord
 {
+    use OwnedByUserTrait;
+
     public static function tableName(): string
     {
         return '{{%account}}';
@@ -48,9 +50,20 @@ class Account extends ActiveRecord
             ['name', 'string', 'max' => 100],
             ['name', 'unique', 'targetAttribute' => ['user_id', 'name'], 'message' => 'Счёт с таким названием уже есть.'],
             ['currency', 'match', 'pattern' => '/^[A-Z]{3}$/', 'message' => 'Код валюты: три латинские буквы, например KZT.'],
+            ['currency', 'validateCurrencyChange'],
             ['initial_balance', 'number', 'min' => -999999999999.99, 'max' => 999999999999.99],
             ['initial_balance', 'default', 'value' => 0],
         ];
+    }
+
+    /**
+     * Валюту нельзя менять, если по счёту уже есть операции: суммы потеряли бы смысл.
+     */
+    public function validateCurrencyChange(string $attribute): void
+    {
+        if (!$this->isNewRecord && $this->isAttributeChanged($attribute) && $this->getTransactions()->exists()) {
+            $this->addError($attribute, 'Нельзя изменить валюту счёта, по которому есть операции.');
+        }
     }
 
     public function attributeLabels(): array

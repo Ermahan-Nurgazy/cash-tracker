@@ -9,6 +9,7 @@
 /backend/web/assets/*
 !/backend/web/assets/.gitkeep
 /backend/tests/_output/
+/backend/tests/Support/_generated/
 /backend/.phpunit.result.cache
 /backend/composer.phar
 

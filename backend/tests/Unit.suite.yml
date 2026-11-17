@@ -1,0 +1,9 @@
+actor: UnitTester
+modules:
+  enabled:
+    - Asserts
+    - Yii2:
+        part: [orm]
+        configFile: 'tests/config/test.php'
+        transaction: true
+        cleanup: false

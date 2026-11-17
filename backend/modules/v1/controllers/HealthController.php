@@ -23,6 +23,13 @@ class HealthController extends Controller
         return $behaviors;
     }
 
+    protected function verbs(): array
+    {
+        return [
+            'index' => ['GET'],
+        ];
+    }
+
     public function actionIndex(): array
     {
         $database = 'up';

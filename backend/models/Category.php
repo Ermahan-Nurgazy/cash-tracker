@@ -25,6 +25,8 @@ use yii\db\ActiveRecord;
  */
 class Category extends ActiveRecord
 {
+    use OwnedByUserTrait;
+
     public const TYPE_EXPENSE = 'expense';
     public const TYPE_INCOME = 'income';
 
@@ -55,6 +57,7 @@ class Category extends ActiveRecord
             ['user_id', 'exist', 'targetClass' => User::class, 'targetAttribute' => 'id'],
             ['name', 'string', 'max' => 100],
             ['type', 'in', 'range' => self::TYPES],
+            ['type', 'validateTypeChange'],
             [
                 'name',
                 'unique',
@@ -64,6 +67,16 @@ class Category extends ActiveRecord
             ['color', 'match', 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'message' => 'Цвет в формате #RRGGBB.'],
             ['icon', 'string', 'max' => 50],
         ];
+    }
+
+    /**
+     * Тип нельзя менять, если по категории уже есть операции: их тип должен совпадать с типом категории.
+     */
+    public function validateTypeChange(string $attribute): void
+    {
+        if (!$this->isNewRecord && $this->isAttributeChanged($attribute) && $this->getTransactions()->exists()) {
+            $this->addError($attribute, 'Нельзя изменить тип категории, по которой есть операции.');
+        }
     }
 
     public function attributeLabels(): array

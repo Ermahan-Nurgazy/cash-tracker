@@ -30,6 +30,10 @@ use yii\db\ActiveRecord;
  */
 class Transaction extends ActiveRecord
 {
+    use OwnedByUserTrait {
+        fields as private fieldsWithoutOwner;
+    }
+
     public const TYPE_EXPENSE = Category::TYPE_EXPENSE;
     public const TYPE_INCOME = Category::TYPE_INCOME;
 
@@ -94,6 +98,31 @@ class Transaction extends ActiveRecord
         if ($categoryType !== false && $categoryType !== $this->type) {
             $this->addError($attribute, 'Тип операции не совпадает с типом категории.');
         }
+    }
+
+    /**
+     * Вместе с id в ответ всегда входят краткие account и category: фронтенду
+     * не нужны дополнительные запросы, чтобы показать названия, цвета и валюту.
+     */
+    public function fields(): array
+    {
+        $fields = $this->fieldsWithoutOwner();
+
+        $fields['account'] = static fn(self $model) => $model->account === null ? null : [
+            'id' => $model->account->id,
+            'name' => $model->account->name,
+            'currency' => $model->account->currency,
+        ];
+
+        $fields['category'] = static fn(self $model) => $model->category === null ? null : [
+            'id' => $model->category->id,
+            'name' => $model->category->name,
+            'type' => $model->category->type,
+            'color' => $model->category->color,
+            'icon' => $model->category->icon,
+        ];
+
+        return $fields;
     }
 
     public function attributeLabels(): array

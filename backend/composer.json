@@ -40,5 +40,10 @@
   "scripts": {
     "migrate": "php yii migrate --interactive=0",
     "test": "codecept run"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
   }
 }
