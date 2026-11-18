@@ -25,6 +25,16 @@ trait OwnedByUserTrait
         return $scenarios;
     }
 
+    /**
+     * Ответ на POST/PATCH должен совпадать с последующим GET: база приводит числа к формату
+     * колонки (numeric(14,2): «1234.5» становится «1234.50»), поэтому запись перечитывается.
+     */
+    public function afterSave($insert, $changedAttributes): void
+    {
+        parent::afterSave($insert, $changedAttributes);
+        $this->refresh();
+    }
+
     public function fields(): array
     {
         $fields = parent::fields();

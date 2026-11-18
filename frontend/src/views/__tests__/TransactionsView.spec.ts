@@ -9,14 +9,19 @@ import * as accountsApi from '@/api/accounts'
 import * as categoriesApi from '@/api/categories'
 import { ApiError } from '@/api/errors'
 import * as api from '@/api/transactions'
+import { useTransactionsStore } from '@/stores/transactions'
 import type { Transaction } from '@/types/api'
+import * as download from '@/utils/download'
 import TransactionsView from '../TransactionsView.vue'
 
 const confirmRequire = vi.hoisted(() => vi.fn())
+const toastAdd = vi.hoisted(() => vi.fn())
+vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }))
 vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: confirmRequire }) }))
 vi.mock('@/api/transactions')
 vi.mock('@/api/accounts')
 vi.mock('@/api/categories')
+vi.mock('@/utils/download')
 
 const tx = (id: number, over: Partial<Transaction> = {}): Transaction => ({
   id,
@@ -154,5 +159,53 @@ describe('TransactionsView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Редактирование операции')
+  })
+
+  it('экспортирует операции с текущими фильтрами, без страниц и сортировки', async () => {
+    const blob = new Blob(['csv'])
+    vi.mocked(api.exportTransactions).mockResolvedValue(blob)
+    const wrapper = await mountView()
+    await useTransactionsStore().setQuery({ type: 'expense', q: 'обед' })
+    await flushPromises()
+
+    await wrapper.find('[data-test="export"]').trigger('click')
+    await flushPromises()
+
+    expect(api.exportTransactions).toHaveBeenCalledWith({ type: 'expense', q: 'обед' })
+    expect(download.saveBlob).toHaveBeenCalledWith(
+      blob,
+      expect.stringMatching(/^transactions-\d{4}-\d{2}-\d{2}\.csv$/),
+    )
+  })
+
+  it('ошибка экспорта показывается сообщением, файл не сохраняется', async () => {
+    vi.mocked(api.exportTransactions).mockRejectedValue(
+      new ApiError(400, 'Слишком много операций для экспорта.'),
+    )
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-test="export"]').trigger('click')
+    await flushPromises()
+
+    expect(download.saveBlob).not.toHaveBeenCalled()
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'error',
+        detail: 'Слишком много операций для экспорта.',
+      }),
+    )
+  })
+
+  it('после импорта перезагружает список', async () => {
+    const wrapper = await mountView()
+    const before = vi.mocked(api.listTransactions).mock.calls.length
+
+    wrapper.findComponent({ name: 'TransactionImportDialog' }).vm.$emit('imported', 3)
+    await flushPromises()
+
+    expect(vi.mocked(api.listTransactions).mock.calls.length).toBeGreaterThan(before)
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'success', summary: 'Импортировано операций: 3' }),
+    )
   })
 })

@@ -29,9 +29,34 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * Запросы с responseType blob (скачивание файла) получают и тело ошибки как Blob.
+ * Разбираем его в JSON, чтобы пользователь увидел сообщение сервера, а не общий текст.
+ */
+/** Blob.text() есть не везде (например, в jsdom), FileReader работает во всех окружениях */
+function readText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })
+}
+
+async function readBlobBody(error: unknown): Promise<void> {
+  if (!axios.isAxiosError(error) || !(error.response?.data instanceof Blob)) return
+
+  try {
+    error.response.data = JSON.parse(await readText(error.response.data))
+  } catch {
+    error.response.data = {}
+  }
+}
+
 http.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
+    await readBlobBody(error)
     const apiError = toApiError(error)
     const url = axios.isAxiosError(error) ? (error.config?.url ?? '') : ''
 

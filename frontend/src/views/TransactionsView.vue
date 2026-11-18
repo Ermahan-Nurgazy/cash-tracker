@@ -13,11 +13,14 @@ import { useToast } from 'primevue/usetoast'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toApiError } from '@/api/errors'
+import { exportTransactions } from '@/api/transactions'
 import TransactionFormDialog from '@/components/TransactionFormDialog.vue'
+import TransactionImportDialog from '@/components/TransactionImportDialog.vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useCategoriesStore } from '@/stores/categories'
 import { PER_PAGE, useTransactionsStore } from '@/stores/transactions'
 import type { Transaction, TransactionFilters, TransactionType } from '@/types/api'
+import { saveBlob } from '@/utils/download'
 import { formatDate, formatMoney, fromIsoDate, toIsoDate } from '@/utils/format'
 
 const store = useTransactionsStore()
@@ -29,6 +32,8 @@ const toast = useToast()
 const dialogVisible = ref(false)
 const editing = ref<Transaction | null>(null)
 const referenceError = ref('')
+const importVisible = ref(false)
+const exporting = ref(false)
 
 const typeOptions = [
   { label: 'Расходы', value: 'expense' },
@@ -119,6 +124,28 @@ function onSaved() {
   toast.add({ severity: 'success', summary: 'Сохранено', life: 2500 })
 }
 
+async function exportCsv() {
+  exporting.value = true
+  try {
+    const blob = await exportTransactions(store.filterParams())
+    saveBlob(blob, `transactions-${toIsoDate(new Date())}.csv`)
+  } catch (e) {
+    toast.add({
+      severity: 'error',
+      summary: 'Не удалось выгрузить',
+      detail: toApiError(e).message,
+      life: 6000,
+    })
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function onImported(count: number) {
+  toast.add({ severity: 'success', summary: `Импортировано операций: ${count}`, life: 4000 })
+  await store.load()
+}
+
 function askDelete(transaction: Transaction) {
   confirm.require({
     header: 'Удаление операции',
@@ -163,13 +190,32 @@ onMounted(() => {
   <div class="page">
     <div class="page__head">
       <h1 class="page__title">Операции</h1>
-      <Button
-        label="Добавить"
-        icon="pi pi-plus"
-        :disabled="accounts.loaded && accounts.items.length === 0"
-        data-test="add"
-        @click="openCreate"
-      />
+      <div class="page__actions">
+        <Button
+          label="Импорт"
+          icon="pi pi-upload"
+          severity="secondary"
+          outlined
+          data-test="import"
+          @click="importVisible = true"
+        />
+        <Button
+          label="Экспорт"
+          icon="pi pi-download"
+          severity="secondary"
+          outlined
+          :loading="exporting"
+          data-test="export"
+          @click="exportCsv"
+        />
+        <Button
+          label="Добавить"
+          icon="pi pi-plus"
+          :disabled="accounts.loaded && accounts.items.length === 0"
+          data-test="add"
+          @click="openCreate"
+        />
+      </div>
     </div>
 
     <Message v-if="referenceError" severity="error" :closable="false" data-test="reference-error">
@@ -332,6 +378,8 @@ onMounted(() => {
       </Column>
     </DataTable>
 
+    <TransactionImportDialog v-model:visible="importVisible" @imported="onImported" />
+
     <TransactionFormDialog
       v-model:visible="dialogVisible"
       :transaction="editing"
@@ -352,6 +400,13 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .page__title {

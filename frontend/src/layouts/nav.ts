@@ -9,5 +9,6 @@ export const navItems: NavItem[] = [
   { name: 'dashboard', label: 'Дашборд', icon: 'pi pi-chart-pie' },
   { name: 'transactions', label: 'Операции', icon: 'pi pi-list' },
   { name: 'categories', label: 'Категории', icon: 'pi pi-tags' },
+  { name: 'budgets', label: 'Бюджеты', icon: 'pi pi-gauge' },
   { name: 'accounts', label: 'Счета', icon: 'pi pi-wallet' },
 ]

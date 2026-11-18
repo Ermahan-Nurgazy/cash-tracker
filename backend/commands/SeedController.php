@@ -3,6 +3,7 @@
 namespace app\commands;
 
 use app\models\Account;
+use app\models\Budget;
 use app\models\Category;
 use app\models\Transaction;
 use app\models\User;
@@ -95,6 +96,7 @@ class SeedController extends Controller
 
             if ($this->transactions) {
                 $this->seedTransactions($user);
+                $this->seedBudgets($user);
             }
 
             $transaction->commit();
@@ -238,6 +240,37 @@ class SeedController extends Controller
 
         $this->stdout("Операции: добавлено {$count} демо-операций за 6 месяцев
 ");
+    }
+
+    /**
+     * Демо-бюджеты на текущий месяц: небольшие лимиты, чтобы были видны разные статусы.
+     */
+    private function seedBudgets(User $user): void
+    {
+        $month = (new DateTimeImmutable('today'))->format('Y-m') . '-01';
+        $plan = ['Продукты' => 90000, 'Кафе и рестораны' => 20000, 'Развлечения' => 60000, 'Транспорт' => 5000];
+        $created = 0;
+
+        foreach ($plan as $name => $limit) {
+            $category = Category::findOne(['user_id' => $user->id, 'name' => $name, 'type' => Category::TYPE_EXPENSE]);
+            if ($category === null) {
+                continue;
+            }
+
+            $exists = Budget::find()
+                ->where(['user_id' => $user->id, 'category_id' => $category->id, 'period_month' => $month, 'currency' => $this->currency])
+                ->exists();
+            if ($exists) {
+                continue;
+            }
+
+            $budget = new Budget(['category_id' => $category->id, 'month' => substr($month, 0, 7), 'currency' => $this->currency, 'limit' => (string) $limit]);
+            $budget->user_id = $user->id;
+            $this->saveOrFail($budget);
+            $created++;
+        }
+
+        $this->stdout("Бюджеты на текущий месяц: создано {$created}\n");
     }
 
     private function saveOrFail(\yii\db\ActiveRecord $model): void

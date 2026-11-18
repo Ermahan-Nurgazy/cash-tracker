@@ -41,6 +41,12 @@ const router = createRouter({
           meta: { title: 'Категории', step: '4.5' },
         },
         {
+          path: 'budgets',
+          name: 'budgets',
+          component: () => import('@/views/BudgetsView.vue'),
+          meta: { title: 'Бюджеты', step: '5.1' },
+        },
+        {
           path: 'accounts',
           name: 'accounts',
           component: () => import('@/views/AccountsView.vue'),

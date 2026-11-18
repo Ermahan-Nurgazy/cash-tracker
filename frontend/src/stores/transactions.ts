@@ -39,6 +39,15 @@ export const useTransactionsStore = defineStore('transactions', () => {
   // Номер запроса: ответ устаревшего запроса (быстрые смены фильтров) не должен затирать свежий
   let requestId = 0
 
+  /** Текущие фильтры без сортировки и страниц: для экспорта всех подходящих операций */
+  function filterParams(): transactionsApi.ExportFilters {
+    const params = buildParams()
+    delete params.sort
+    delete params.page
+    delete params['per-page']
+    return params
+  }
+
   function buildParams(): TransactionFilters {
     const params: TransactionFilters = { sort: sort.value, page: page.value, 'per-page': PER_PAGE }
 
@@ -136,6 +145,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     loading,
     error,
     query,
+    filterParams,
     sort,
     page,
     hasFilters,

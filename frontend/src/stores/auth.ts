@@ -5,6 +5,7 @@ import { toApiError } from '@/api/errors'
 import { clearToken, getToken, setToken } from '@/api/token'
 import type { Credentials, User } from '@/types/api'
 import { useAccountsStore } from './accounts'
+import { useBudgetsStore } from './budgets'
 import { useCategoriesStore } from './categories'
 import { useDashboardStore } from './dashboard'
 import { useTransactionsStore } from './transactions'
@@ -30,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Данные прежнего пользователя не должны быть видны следующему
     useAccountsStore().reset()
     useCategoriesStore().reset()
+    useBudgetsStore().reset()
     useTransactionsStore().reset()
     useDashboardStore().reset()
   }

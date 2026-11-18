@@ -24,6 +24,7 @@ async function mountLayout() {
           { path: '', name: 'dashboard', component: Stub, meta: { title: 'Дашборд' } },
           { path: 'transactions', name: 'transactions', component: Stub },
           { path: 'categories', name: 'categories', component: Stub },
+          { path: 'budgets', name: 'budgets', component: Stub },
           { path: 'accounts', name: 'accounts', component: Stub },
         ],
       },

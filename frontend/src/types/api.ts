@@ -182,3 +182,33 @@ export interface ReportParams {
   date_to?: string
   account_id?: number
 }
+
+// --- Бюджеты ---
+
+export type BudgetStatus = 'ok' | 'warning' | 'exceeded'
+
+export interface Budget {
+  id: number
+  category_id: number
+  /** Месяц в формате ГГГГ-ММ */
+  month: string
+  currency: string
+  limit: Money
+  /** Потрачено в валюте бюджета */
+  spent: Money
+  /** Лимит минус потрачено; при превышении отрицательный */
+  remaining: Money
+  /** Целые проценты лимита, при превышении больше 100 */
+  percent: number
+  status: BudgetStatus
+  category: Pick<Category, 'id' | 'name' | 'color' | 'icon'>
+  created_at: number
+  updated_at: number
+}
+
+export interface BudgetInput {
+  category_id: number
+  month: string
+  currency: string
+  limit: Money
+}

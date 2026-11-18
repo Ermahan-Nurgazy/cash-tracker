@@ -71,6 +71,11 @@ return [
                 'GET api/v1/reports/balances' => 'v1/report/balances',
                 'api/v1/reports/balances' => 'v1/report/balances',
 
+                'GET api/v1/transactions/export' => 'v1/transaction/export',
+                'api/v1/transactions/export' => 'v1/transaction/export',
+                'POST api/v1/transactions/import' => 'v1/transaction/import',
+                'api/v1/transactions/import' => 'v1/transaction/import',
+
                 [
                     'class' => 'yii\rest\UrlRule',
                     'pluralize' => false,
@@ -78,6 +83,7 @@ return [
                         'api/v1/categories' => 'v1/category',
                         'api/v1/accounts' => 'v1/account',
                         'api/v1/transactions' => 'v1/transaction',
+                        'api/v1/budgets' => 'v1/budget',
                     ],
                 ],
             ],

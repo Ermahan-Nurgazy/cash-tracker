@@ -27,6 +27,27 @@ class TransactionCest extends ApiBase
         $I->dontSeeResponseJsonMatchesJsonPath('$.user_id');
     }
 
+    public function createAndUpdateResponsesMatchRead(ApiTester $I): void
+    {
+        $this->registerAndAuth($I);
+        $account = $this->createAccount($I, 'Карта', 'KZT', '10');
+        $category = $this->createCategory($I);
+
+        $I->sendPost(self::API . '/transactions', [
+            'account_id' => $account, 'category_id' => $category,
+            'amount' => '1234.5', 'type' => 'expense', 'occurred_at' => '2026-11-10',
+        ]);
+        $I->seeResponseCodeIs(201);
+        $I->seeResponseContainsJson(['amount' => '1234.50']);
+        $id = (int) $I->grabDataFromResponseByJsonPath('$.id')[0];
+
+        $I->sendPatch(self::API . "/transactions/$id", ['amount' => '7']);
+        $I->seeResponseContainsJson(['amount' => '7.00']);
+
+        $I->sendPatch(self::API . "/accounts/$account", ['initial_balance' => '5']);
+        $I->seeResponseContainsJson(['initial_balance' => '5.00']);
+    }
+
     public function validation(ApiTester $I): void
     {
         $this->registerAndAuth($I);

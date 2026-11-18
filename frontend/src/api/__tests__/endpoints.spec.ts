@@ -1,7 +1,8 @@
-import { type AxiosAdapter, type InternalAxiosRequestConfig } from 'axios'
+import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as accounts from '../accounts'
 import * as auth from '../auth'
+import * as budgets from '../budgets'
 import * as categories from '../categories'
 import { http } from '../http'
 import * as reports from '../reports'
@@ -90,6 +91,25 @@ describe('API-обёртки: адреса, методы и параметры',
     expect(last()).toMatchObject({ method: 'delete', url: '/transactions/9' })
   })
 
+  it('budgets', async () => {
+    await budgets.listBudgets({ month: '2026-11' })
+    expect(last()).toMatchObject({ method: 'get', url: '/budgets', params: { month: '2026-11' } })
+
+    await budgets.createBudget({
+      category_id: 1,
+      month: '2026-11',
+      currency: 'KZT',
+      limit: '10.00',
+    })
+    expect(last()).toMatchObject({ method: 'post', url: '/budgets' })
+
+    await budgets.updateBudget(4, { limit: '20.00' })
+    expect(last()).toMatchObject({ method: 'patch', url: '/budgets/4', body: { limit: '20.00' } })
+
+    await budgets.deleteBudget(4)
+    expect(last()).toMatchObject({ method: 'delete', url: '/budgets/4' })
+  })
+
   it('reports', async () => {
     await reports.fetchCategoryReport({ date_from: '2026-01-01', type: 'expense' })
     expect(last()).toMatchObject({
@@ -102,6 +122,57 @@ describe('API-обёртки: адреса, методы и параметры',
 
     await reports.fetchBalances()
     expect(last()).toMatchObject({ url: '/reports/balances' })
+  })
+})
+
+describe('API-обёртки: CSV', () => {
+  it('экспорт запрашивает blob с фильтрами', async () => {
+    await transactions.exportTransactions({ type: 'expense', date_from: '2026-11-01' })
+
+    expect(last()).toMatchObject({
+      method: 'get',
+      url: '/transactions/export',
+      params: { type: 'expense', date_from: '2026-11-01' },
+    })
+    expect(seen[seen.length - 1]!.responseType).toBe('blob')
+  })
+
+  it('при ошибке экспорта тело blob разбирается в сообщение сервера', async () => {
+    http.defaults.adapter = ((config: InternalAxiosRequestConfig) =>
+      Promise.reject(
+        new AxiosError(
+          'bad',
+          'ERR_BAD_REQUEST',
+          config,
+          {},
+          {
+            status: 400,
+            statusText: '',
+            headers: {},
+            config,
+            data: new Blob([JSON.stringify({ status: 400, message: 'Слишком много операций.' })]),
+          },
+        ),
+      )) as AxiosAdapter
+
+    await expect(transactions.exportTransactions()).rejects.toMatchObject({
+      status: 400,
+      message: 'Слишком много операций.',
+    })
+  })
+
+  it('импорт отправляет байты файла как text/csv', async () => {
+    const file = new File(['abc'], 'a.csv')
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: () => Promise.resolve(new TextEncoder().encode('abc').buffer),
+    })
+
+    await transactions.importTransactions(file)
+
+    const config = seen[seen.length - 1]!
+    expect(config.method).toBe('post')
+    expect(config.url).toBe('/transactions/import')
+    expect(config.headers.get('Content-Type')).toBe('text/csv')
   })
 })
 

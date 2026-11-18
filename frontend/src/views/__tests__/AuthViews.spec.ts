@@ -13,8 +13,8 @@ import RegisterView from '../RegisterView.vue'
 vi.mock('@/api/auth')
 
 const session = {
-  token: 'tok',
-  user: { id: 1, email: 'a@example.com', created_at: '2026-01-01' },
+  access_token: 'tok',
+  user: { id: 1, email: 'a@example.com', created_at: 1, updated_at: 1 },
 }
 
 async function mountView(view: typeof LoginView, path: string) {

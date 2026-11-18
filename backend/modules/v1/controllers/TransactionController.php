@@ -2,10 +2,15 @@
 
 namespace app\modules\v1\controllers;
 
+use app\components\TransactionCsv;
+use app\components\TransactionImporter;
 use app\models\Category;
 use app\models\Transaction;
+use Yii;
 use yii\db\ActiveQuery;
 use yii\web\BadRequestHttpException;
+use yii\web\HttpException;
+use yii\web\Response;
 
 /**
  * Операции (расходы и доходы) пользователя.
@@ -19,6 +24,8 @@ use yii\web\BadRequestHttpException;
  * GET    /api/v1/transactions/{id}
  * PUT    /api/v1/transactions/{id}  (или PATCH)
  * DELETE /api/v1/transactions/{id}
+ * GET    /api/v1/transactions/export  (CSV с теми же фильтрами)
+ * POST   /api/v1/transactions/import  (тело запроса: CSV)
  *
  * В каждой операции есть вложенные account {id, name, currency}
  * и category {id, name, type, color, icon}.
@@ -28,6 +35,9 @@ class TransactionController extends OwnedActiveController
     use QueryParamsTrait;
 
     public $modelClass = Transaction::class;
+
+    private const EXPORT_LIMIT = 10000;
+    private const IMPORT_MAX_BYTES = 1048576;
 
     protected function indexQuery(): ActiveQuery
     {
@@ -74,6 +84,68 @@ class TransactionController extends OwnedActiveController
         }
 
         return $query;
+    }
+
+    protected function verbs(): array
+    {
+        return array_merge(parent::verbs(), [
+            'export' => ['GET'],
+            'import' => ['POST'],
+        ]);
+    }
+
+    /**
+     * Экспорт в CSV с теми же фильтрами, что и у списка (кроме сортировки и страниц).
+     * Файл: UTF-8 с BOM, разделитель «;», по возрастанию даты.
+     */
+    public function actionExport(): string
+    {
+        $query = $this->indexQuery()->orderBy(['occurred_at' => SORT_ASC, 'id' => SORT_ASC]);
+
+        if ((clone $query)->count() > self::EXPORT_LIMIT) {
+            throw new BadRequestHttpException(
+                'Слишком много операций для экспорта (больше ' . self::EXPORT_LIMIT . '): сузьте период.'
+            );
+        }
+
+        $response = Yii::$app->response;
+        $response->format = Response::FORMAT_RAW;
+        $response->getHeaders()
+            ->set('Content-Type', 'text/csv; charset=UTF-8')
+            ->set('Content-Disposition', 'attachment; filename="transactions-' . date('Y-m-d') . '.csv"');
+
+        return TransactionCsv::export($query->each(500));
+    }
+
+    /**
+     * Импорт из CSV: тело запроса — сам файл (Content-Type: text/csv).
+     * Всё или ничего: при ошибках в строках 422 с перечнем ошибок и ничего не сохраняется.
+     */
+    public function actionImport(): array
+    {
+        $raw = Yii::$app->request->getRawBody();
+
+        if (trim($raw) === '') {
+            throw new BadRequestHttpException('Передайте CSV-файл в теле запроса.');
+        }
+
+        if (strlen($raw) > self::IMPORT_MAX_BYTES) {
+            throw new HttpException(413, 'Файл слишком большой: максимум 1 МБ.');
+        }
+
+        $result = (new TransactionImporter())->import((int) Yii::$app->user->id, $raw);
+
+        if ($result['errors'] !== []) {
+            Yii::$app->response->setStatusCode(422);
+
+            return [
+                'status' => 422,
+                'message' => 'Импорт отменён: в файле есть ошибки, ничего не сохранено.',
+                'errors' => $result['errors'],
+            ];
+        }
+
+        return ['imported' => $result['imported']];
     }
 
     /**
