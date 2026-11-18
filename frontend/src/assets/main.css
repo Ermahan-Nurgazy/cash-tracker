@@ -1,0 +1,44 @@
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+}
+
+/* Фон области контента чуть отличается от карточек */
+#app {
+  min-height: 100vh;
+  background: var(--p-surface-50);
+}
+
+.app-dark #app {
+  background: var(--p-surface-950);
+}
+
+/* Цвета графиков (проверены валидатором палитры в светлом и тёмном режимах).
+   Серия 1 — синий («Доходы», полосы), серия 2 — оранжевый («Расходы»). */
+:root {
+  --viz-surface: #fcfcfb;
+  --viz-text-primary: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-baseline: #c3c2b7;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+}
+
+:root.app-dark {
+  --viz-surface: #1a1a19;
+  --viz-text-primary: #f0efec;
+  --viz-text-secondary: #c3c2b7;
+  --viz-grid: #2c2c2a;
+  --viz-baseline: #383835;
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+}

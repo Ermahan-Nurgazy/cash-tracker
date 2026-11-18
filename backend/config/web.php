@@ -99,6 +99,13 @@ return [
             'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
             'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'Accept'],
             'Access-Control-Max-Age' => 3600,
+            // Без этого браузер скроет заголовки пагинации от фронтенда на другом origin
+            'Access-Control-Expose-Headers' => [
+                'X-Pagination-Total-Count',
+                'X-Pagination-Current-Page',
+                'X-Pagination-Page-Count',
+                'X-Pagination-Per-Page',
+            ],
         ],
     ],
     'params' => $params,
