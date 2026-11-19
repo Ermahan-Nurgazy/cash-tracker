@@ -111,7 +111,7 @@ describe('AppLayout', () => {
     await wrapper.find('[data-test="burger"]').trigger('click')
     await flushPromises()
 
-    expect(document.body.textContent).toContain('Cash Tracker')
+    expect(document.body.textContent).toContain('Трекер расходов')
     // Панель выводится в body, а боковое меню остаётся внутри обёртки
     expect(document.body.querySelectorAll('.layout__link')).toHaveLength(navItems.length)
     wrapper.unmount()
