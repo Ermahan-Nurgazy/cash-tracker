@@ -2,15 +2,11 @@
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import { ref, watch } from 'vue'
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useThemeStore } from '@/stores/theme'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+import UserMenu from '@/components/UserMenu.vue'
 import { navItems } from './nav'
 
-const auth = useAuthStore()
-const theme = useThemeStore()
 const route = useRoute()
-const router = useRouter()
 
 /** Меню на узких экранах открывается в выдвижной панели */
 const menuOpen = ref(false)
@@ -21,11 +17,6 @@ watch(
     menuOpen.value = false
   },
 )
-
-async function logout() {
-  await auth.logout()
-  await router.replace({ name: 'login' })
-}
 </script>
 
 <template>
@@ -80,27 +71,7 @@ async function logout() {
         <span class="layout__title">{{ route.meta.title ?? '' }}</span>
 
         <div class="layout__actions">
-          <span v-if="auth.user" class="layout__user" data-test="user-email">
-            {{ auth.user.email }}
-          </span>
-          <Button
-            :icon="theme.isDark ? 'pi pi-sun' : 'pi pi-moon'"
-            severity="secondary"
-            text
-            rounded
-            :aria-label="theme.isDark ? 'Светлая тема' : 'Тёмная тема'"
-            data-test="theme-toggle"
-            @click="theme.toggle()"
-          />
-          <Button
-            icon="pi pi-sign-out"
-            severity="secondary"
-            text
-            rounded
-            aria-label="Выйти"
-            data-test="logout"
-            @click="logout"
-          />
+          <UserMenu />
         </div>
       </header>
 
@@ -198,12 +169,6 @@ async function logout() {
   margin-left: auto;
 }
 
-.layout__user {
-  display: none;
-  margin-right: 0.5rem;
-  color: var(--p-text-muted-color);
-}
-
 .layout__content {
   flex: 1;
   padding: 1rem;
@@ -217,10 +182,6 @@ async function logout() {
 
   .layout__burger {
     display: none;
-  }
-
-  .layout__user {
-    display: inline;
   }
 
   .layout__content {

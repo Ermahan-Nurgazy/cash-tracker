@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import PrimeVue from 'primevue/config'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as authApi from '@/api/auth'
 import { clearToken, setToken } from '@/api/token'
@@ -12,6 +12,15 @@ import { navItems } from '../nav'
 vi.mock('@/api/auth')
 
 const Stub = { template: '<div />' }
+
+/** Действия профиля находятся во всплывающей панели, которая выводится в body */
+async function openUserMenu(wrapper: Awaited<ReturnType<typeof mountLayout>>['wrapper']) {
+  await wrapper.find('[data-test="user-menu"]').trigger('click')
+  await flushPromises()
+}
+
+const bodyButton = (test: string) =>
+  document.body.querySelector<HTMLButtonElement>(`[data-test="${test}"]`)
 
 async function mountLayout() {
   const router = createRouter({
@@ -33,11 +42,21 @@ async function mountLayout() {
   })
   await router.push('/')
 
-  const wrapper = mount(AppLayout, { global: { plugins: [PrimeVue, router] } })
+  const wrapper = mount(AppLayout, {
+    global: { plugins: [PrimeVue, router] },
+    attachTo: document.body,
+  })
+  mounted.push(wrapper)
   return { wrapper, router }
 }
 
+const mounted: { unmount: () => void }[] = []
+
 describe('AppLayout', () => {
+  afterEach(() => {
+    mounted.splice(0).forEach((wrapper) => wrapper.unmount())
+  })
+
   beforeEach(() => {
     localStorage.clear()
     clearToken()
@@ -85,7 +104,8 @@ describe('AppLayout', () => {
     const { wrapper } = await mountLayout()
     const before = document.documentElement.classList.contains('app-dark')
 
-    await wrapper.find('[data-test="theme-toggle"]').trigger('click')
+    await openUserMenu(wrapper)
+    bodyButton('theme-toggle')?.click()
     await flushPromises()
 
     expect(document.documentElement.classList.contains('app-dark')).toBe(!before)
@@ -97,7 +117,8 @@ describe('AppLayout', () => {
     vi.mocked(authApi.logout).mockResolvedValue()
     const { wrapper, router } = await mountLayout()
 
-    await wrapper.find('[data-test="logout"]').trigger('click')
+    await openUserMenu(wrapper)
+    bodyButton('logout')?.click()
     await flushPromises()
 
     expect(authApi.logout).toHaveBeenCalledOnce()
@@ -113,7 +134,6 @@ describe('AppLayout', () => {
 
     expect(document.body.textContent).toContain('Трекер расходов')
     // Панель выводится в body, а боковое меню остаётся внутри обёртки
-    expect(document.body.querySelectorAll('.layout__link')).toHaveLength(navItems.length)
-    wrapper.unmount()
+    expect(document.body.querySelectorAll('.p-drawer .layout__link')).toHaveLength(navItems.length)
   })
 })

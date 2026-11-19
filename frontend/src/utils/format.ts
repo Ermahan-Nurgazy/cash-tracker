@@ -42,3 +42,8 @@ export function fromIsoDate(iso: string): Date {
 export function toMoneyString(value: number): string {
   return value.toFixed(2)
 }
+
+/** Отметка времени API (секунды Unix) → 'ДД.ММ.ГГГГ' по локальному времени */
+export function formatTimestamp(seconds: number): string {
+  return formatDate(toIsoDate(new Date(seconds * 1000)))
+}

@@ -19,6 +19,8 @@ const props = defineProps<{
   visible: boolean
   /** Редактируемая операция; null — создание новой */
   transaction: Transaction | null
+  /** Тип новой операции при открытии (быстрые действия «Расход» / «Доход») */
+  initialType?: TransactionType
 }>()
 
 const emit = defineEmits<{
@@ -46,7 +48,7 @@ interface FormState {
 
 function emptyForm(): FormState {
   return {
-    type: 'expense',
+    type: props.initialType ?? 'expense',
     accountId: accounts.items[0]?.id ?? null,
     categoryId: null,
     amount: null,

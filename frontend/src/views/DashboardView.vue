@@ -2,10 +2,19 @@
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import SelectButton from 'primevue/selectbutton'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { toApiError } from '@/api/errors'
+import CategoryFormDialog from '@/components/CategoryFormDialog.vue'
 import MonthlyChart from '@/components/MonthlyChart.vue'
+import RecentTransactions from '@/components/RecentTransactions.vue'
+import TransactionFormDialog from '@/components/TransactionFormDialog.vue'
+import { useAccountsStore } from '@/stores/accounts'
+import { useCategoriesStore } from '@/stores/categories'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useRecentTransactionsStore } from '@/stores/recentTransactions'
+import type { TransactionType } from '@/types/api'
 import {
   buildCategoryBars,
   collectCurrencies,
@@ -64,7 +73,55 @@ function goCurrent() {
   void store.setMonth(currentMonth())
 }
 
-onMounted(() => void store.load())
+// --- Быстрые действия: новая операция или категория прямо с главного экрана ---
+
+const accountsStore = useAccountsStore()
+const categoriesStore = useCategoriesStore()
+const recent = useRecentTransactionsStore()
+const toast = useToast()
+
+const referenceError = ref('')
+const transactionDialog = ref(false)
+const transactionType = ref<TransactionType>('expense')
+const categoryDialog = ref(false)
+
+const noAccounts = computed(() => accountsStore.loaded && accountsStore.items.length === 0)
+/** Пока справочники не загружены, форма операции открылась бы с пустыми списками счетов и категорий */
+const referencesReady = computed(() => accountsStore.loaded && categoriesStore.loaded)
+
+/** Справочники нужны форме операции: счета и категории грузятся один раз */
+async function loadReferences(): Promise<boolean> {
+  referenceError.value = ''
+  try {
+    await Promise.all([accountsStore.load(), categoriesStore.load()])
+    return true
+  } catch (e) {
+    referenceError.value = toApiError(e).message
+    return false
+  }
+}
+
+async function addTransaction(type: TransactionType) {
+  if (!(await loadReferences()) || !referencesReady.value || noAccounts.value) return
+  transactionType.value = type
+  transactionDialog.value = true
+}
+
+function onTransactionSaved() {
+  toast.add({ severity: 'success', summary: 'Операция добавлена', life: 2500 })
+  void store.load()
+  // Новая операция попадает в начало списка: возвращаемся на первую страницу, иначе её не видно
+  void recent.setPage(1)
+}
+
+function onCategorySaved() {
+  toast.add({ severity: 'success', summary: 'Категория добавлена', life: 2500 })
+}
+
+onMounted(() => {
+  void store.load()
+  void loadReferences()
+})
 </script>
 
 <template>
@@ -114,6 +171,41 @@ onMounted(() => void store.load())
       />
     </div>
 
+    <div class="quick" role="group" aria-label="Быстрые действия">
+      <Button
+        label="Расход"
+        icon="pi pi-minus-circle"
+        :disabled="noAccounts || !referencesReady"
+        data-test="add-expense"
+        @click="addTransaction('expense')"
+      />
+      <Button
+        label="Доход"
+        icon="pi pi-plus-circle"
+        severity="success"
+        :disabled="noAccounts || !referencesReady"
+        data-test="add-income"
+        @click="addTransaction('income')"
+      />
+      <Button
+        label="Категория"
+        icon="pi pi-tag"
+        severity="secondary"
+        outlined
+        data-test="add-category"
+        @click="categoryDialog = true"
+      />
+      <span v-if="noAccounts" class="muted quick__hint" data-test="no-accounts">
+        Чтобы добавлять операции, сначала заведите
+        <RouterLink :to="{ name: 'accounts' }">счёт</RouterLink>.
+      </span>
+    </div>
+
+    <Message v-if="referenceError" severity="error" :closable="false" data-test="reference-error">
+      Не удалось загрузить счета и категории: {{ referenceError }}
+      <Button label="Повторить" text size="small" @click="loadReferences" />
+    </Message>
+
     <Message v-if="store.error" severity="error" :closable="false" data-test="error">
       {{ store.error }}
       <Button label="Повторить" text size="small" @click="store.load()" />
@@ -155,7 +247,12 @@ onMounted(() => void store.load())
           <span class="tile__value tile__value--hero">{{ money(summary.balance) }}</span>
         </div>
       </section>
+    </template>
 
+    <!-- Последние операции не зависят от выбранного месяца и валюты -->
+    <RecentTransactions />
+
+    <template v-if="hasData">
       <div class="grid viz" :class="{ 'is-loading': store.loading }">
         <section class="card" aria-labelledby="by-category">
           <h2 id="by-category" class="card__title">Расходы по категориям</h2>
@@ -242,6 +339,18 @@ onMounted(() => void store.load())
         </ul>
       </section>
     </template>
+
+    <TransactionFormDialog
+      v-model:visible="transactionDialog"
+      :transaction="null"
+      :initial-type="transactionType"
+      @saved="onTransactionSaved"
+    />
+    <CategoryFormDialog
+      v-model:visible="categoryDialog"
+      :category="null"
+      @saved="onCategorySaved"
+    />
   </div>
 </template>
 
@@ -275,6 +384,17 @@ onMounted(() => void store.load())
   min-width: 9rem;
   text-align: center;
   font-weight: 600;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quick__hint {
+  margin-left: 0.25rem;
 }
 
 .muted {
