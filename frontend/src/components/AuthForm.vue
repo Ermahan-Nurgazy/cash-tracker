@@ -69,7 +69,7 @@ async function onSubmit() {
   <main class="auth">
     <Card class="auth__card">
       <template #title>{{ isRegister ? 'Регистрация' : 'Вход' }}</template>
-      <template #subtitle>Cash Tracker</template>
+      <template #subtitle>Трекер расходов</template>
       <template #content>
         <form class="auth__form" novalidate @submit.prevent="onSubmit">
           <Message v-if="formError" severity="error" :closable="false" data-test="form-error">
