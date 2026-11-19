@@ -13,6 +13,7 @@ const theme = useThemeStore()
 const router = useRouter()
 
 const panel = ref<InstanceType<typeof Popover> | null>(null)
+const loggingOut = ref(false)
 
 /** Первая буква email для аватара; без загруженного пользователя — значок */
 const initial = computed(() => auth.user?.email.charAt(0).toUpperCase() ?? '')
@@ -22,9 +23,16 @@ function toggle(event: Event) {
 }
 
 async function logout() {
-  panel.value?.hide()
-  await auth.logout()
-  await router.replace({ name: 'login' })
+  // Повторные клики, пока запрос выхода не завершился, лишних запросов не создают
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await auth.logout()
+    panel.value?.hide()
+    await router.replace({ name: 'login' })
+  } finally {
+    loggingOut.value = false
+  }
 }
 </script>
 
@@ -78,6 +86,7 @@ async function logout() {
         text
         fluid
         class="user-menu__action"
+        :loading="loggingOut"
         data-test="logout"
         @click="logout"
       />

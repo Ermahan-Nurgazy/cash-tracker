@@ -336,6 +336,30 @@ describe('DashboardView', () => {
     wrapper.unmount()
   })
 
+  it('повтор после ошибки списка возвращает на первую страницу', async () => {
+    vi.mocked(transactionsApi.listTransactions).mockResolvedValue(
+      paginated(
+        Array.from({ length: 10 }, (_, i) => tx(i + 1)),
+        25,
+      ),
+    )
+    const wrapper = await mountView()
+    vi.mocked(transactionsApi.listTransactions).mockRejectedValueOnce(
+      new ApiError(0, 'Нет связи с сервером.'),
+    )
+    await wrapper.find('[data-test="recent"] .p-paginator-next').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-test="recent-error"]').exists()).toBe(true)
+
+    await wrapper.find('[data-test="recent-error"] button').trigger('click')
+    await flushPromises()
+
+    expect(transactionsApi.listTransactions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+    )
+    expect(wrapper.find('[data-test="recent-error"]').exists()).toBe(false)
+  })
+
   it('после сохранения возвращает список последних операций на первую страницу', async () => {
     vi.mocked(transactionsApi.listTransactions).mockResolvedValue(
       paginated(

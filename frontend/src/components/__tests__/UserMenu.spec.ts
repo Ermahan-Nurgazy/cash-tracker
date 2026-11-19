@@ -88,6 +88,22 @@ describe('UserMenu', () => {
     expect(document.documentElement.classList.contains('app-dark')).toBe(!before)
   })
 
+  it('повторные клики по «Выйти» не отправляют лишние запросы', async () => {
+    let finish: () => void = () => undefined
+    vi.mocked(authApi.logout).mockReturnValue(new Promise<void>((resolve) => (finish = resolve)))
+    const { wrapper } = await mountMenu()
+
+    await open(wrapper)
+    dom('logout')?.click()
+    dom('logout')?.click()
+    dom('logout')?.click()
+    await flushPromises()
+    finish()
+    await flushPromises()
+
+    expect(authApi.logout).toHaveBeenCalledOnce()
+  })
+
   it('выход очищает сессию и ведёт на страницу входа', async () => {
     vi.mocked(authApi.logout).mockResolvedValue()
     const { wrapper, router } = await mountMenu()

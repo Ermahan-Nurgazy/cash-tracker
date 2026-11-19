@@ -29,7 +29,8 @@ onMounted(() => void store.load())
 
     <Message v-if="store.error" severity="error" :closable="false" data-test="recent-error">
       {{ store.error }}
-      <Button label="Повторить" text size="small" @click="store.load()" />
+      <!-- С первой страницы: после ошибки на дальней странице иначе не вернуться к началу списка -->
+      <Button label="Повторить" text size="small" @click="store.setPage(1)" />
     </Message>
 
     <DataTable
