@@ -33,7 +33,7 @@ async function logout() {
     <aside class="layout__sidebar" data-test="sidebar">
       <div class="layout__brand">
         <i class="pi pi-wallet" />
-        <span>Cash Tracker</span>
+        <span>Трекер расходов</span>
       </div>
       <nav class="layout__nav" aria-label="Основное меню">
         <RouterLink
@@ -50,7 +50,7 @@ async function logout() {
       </nav>
     </aside>
 
-    <Drawer v-model:visible="menuOpen" header="Cash Tracker" class="layout__drawer">
+    <Drawer v-model:visible="menuOpen" header="Трекер расходов" class="layout__drawer">
       <nav class="layout__nav" aria-label="Основное меню">
         <RouterLink
           v-for="item in navItems"
