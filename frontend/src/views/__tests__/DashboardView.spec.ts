@@ -317,6 +317,47 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-test="no-accounts"]').exists()).toBe(true)
   })
 
+  it('кнопки операций недоступны, пока не загрузились счета и категории', async () => {
+    let resolveAccounts: (value: Paginated<Account>) => void = () => undefined
+    vi.mocked(accountsApi.listAccounts).mockReturnValue(
+      new Promise((resolve) => (resolveAccounts = resolve)),
+    )
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="add-expense"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-test="add-income"]').attributes('disabled')).toBeDefined()
+    await wrapper.find('[data-test="add-expense"]').trigger('click')
+    expect(wrapper.findComponent(TransactionFormDialog).props('visible')).toBe(false)
+
+    resolveAccounts(paginated([cash]))
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="add-expense"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('после сохранения возвращает список последних операций на первую страницу', async () => {
+    vi.mocked(transactionsApi.listTransactions).mockResolvedValue(
+      paginated(
+        Array.from({ length: 10 }, (_, i) => tx(i + 1)),
+        25,
+      ),
+    )
+    const wrapper = await mountView()
+    await wrapper.find('[data-test="recent"] .p-paginator-next').trigger('click')
+    await flushPromises()
+    expect(transactionsApi.listTransactions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2 }),
+    )
+
+    wrapper.findComponent(TransactionFormDialog).vm.$emit('saved')
+    await flushPromises()
+
+    expect(transactionsApi.listTransactions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+    )
+  })
+
   it('после сохранения операции обновляет итоги и список', async () => {
     const wrapper = await mountView()
     vi.mocked(reports.fetchMonthlyReport).mockClear()

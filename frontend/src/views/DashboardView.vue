@@ -86,6 +86,8 @@ const transactionType = ref<TransactionType>('expense')
 const categoryDialog = ref(false)
 
 const noAccounts = computed(() => accountsStore.loaded && accountsStore.items.length === 0)
+/** Пока справочники не загружены, форма операции открылась бы с пустыми списками счетов и категорий */
+const referencesReady = computed(() => accountsStore.loaded && categoriesStore.loaded)
 
 /** Справочники нужны форме операции: счета и категории грузятся один раз */
 async function loadReferences(): Promise<boolean> {
@@ -100,7 +102,7 @@ async function loadReferences(): Promise<boolean> {
 }
 
 async function addTransaction(type: TransactionType) {
-  if (!(await loadReferences()) || noAccounts.value) return
+  if (!(await loadReferences()) || !referencesReady.value || noAccounts.value) return
   transactionType.value = type
   transactionDialog.value = true
 }
@@ -108,7 +110,8 @@ async function addTransaction(type: TransactionType) {
 function onTransactionSaved() {
   toast.add({ severity: 'success', summary: 'Операция добавлена', life: 2500 })
   void store.load()
-  void recent.load()
+  // Новая операция попадает в начало списка: возвращаемся на первую страницу, иначе её не видно
+  void recent.setPage(1)
 }
 
 function onCategorySaved() {
@@ -172,7 +175,7 @@ onMounted(() => {
       <Button
         label="Расход"
         icon="pi pi-minus-circle"
-        :disabled="noAccounts"
+        :disabled="noAccounts || !referencesReady"
         data-test="add-expense"
         @click="addTransaction('expense')"
       />
@@ -180,7 +183,7 @@ onMounted(() => {
         label="Доход"
         icon="pi pi-plus-circle"
         severity="success"
-        :disabled="noAccounts"
+        :disabled="noAccounts || !referencesReady"
         data-test="add-income"
         @click="addTransaction('income')"
       />
