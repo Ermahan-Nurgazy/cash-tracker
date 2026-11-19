@@ -41,14 +41,17 @@ const salary = {
 // Диалог выводится в body (teleport), поэтому разметку ищем в document, а компоненты — через wrapper
 let mounted: VueWrapper | null = null
 
-async function mountDialog(transaction: Transaction | null = null) {
+async function mountDialog(
+  transaction: Transaction | null = null,
+  initialType?: 'expense' | 'income',
+) {
   const accounts = useAccountsStore()
   const categories = useCategoriesStore()
   accounts.items = [account]
   categories.items = [food, salary]
 
   mounted = mount(TransactionFormDialog, {
-    props: { visible: true, transaction },
+    props: { visible: true, transaction, initialType },
     global: { plugins: [PrimeVue] },
     attachTo: document.body,
   })
@@ -81,6 +84,22 @@ describe('TransactionFormDialog', () => {
       pageCount: 1,
       perPage: 20,
     })
+  })
+
+  it('открывается с типом из initialType и предлагает категории этого типа', async () => {
+    vi.mocked(api.createTransaction).mockResolvedValue({} as Transaction)
+    const wrapper = await mountDialog(null, 'income')
+
+    const [, categorySelect] = wrapper.findAllComponents(Select)
+    expect(categorySelect?.props('options')).toEqual([salary])
+
+    categorySelect?.vm.$emit('update:modelValue', 11)
+    wrapper.findComponent(InputNumber).vm.$emit('update:modelValue', 1000)
+    await submit()
+
+    expect(api.createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'income', category_id: 11 }),
+    )
   })
 
   it('не отправляет пустую форму и показывает ошибки', async () => {

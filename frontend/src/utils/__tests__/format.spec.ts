@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatMoney, fromIsoDate, toIsoDate, toMoneyString } from '../format'
+import {
+  formatDate,
+  formatMoney,
+  formatTimestamp,
+  fromIsoDate,
+  toIsoDate,
+  toMoneyString,
+} from '../format'
 
 // Символ тенге зависит от данных ICU (₸ или KZT), а тысячи Intl разделяет неразрывным пробелом:
 // поэтому пробелы нормализуются, а символ валюты допускается любой из двух
@@ -22,6 +29,11 @@ describe('formatMoney', () => {
 })
 
 describe('даты', () => {
+  it('formatTimestamp переводит секунды Unix в ДД.ММ.ГГГГ по локальному времени', () => {
+    const seconds = new Date(2026, 10, 19, 15, 30).getTime() / 1000
+    expect(formatTimestamp(seconds)).toBe('19.11.2026')
+  })
+
   it('formatDate переводит ГГГГ-ММ-ДД в ДД.ММ.ГГГГ', () => {
     expect(formatDate('2026-11-05')).toBe('05.11.2026')
     expect(formatDate('мусор')).toBe('мусор')

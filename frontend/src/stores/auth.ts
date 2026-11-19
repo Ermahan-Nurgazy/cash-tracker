@@ -8,6 +8,7 @@ import { useAccountsStore } from './accounts'
 import { useBudgetsStore } from './budgets'
 import { useCategoriesStore } from './categories'
 import { useDashboardStore } from './dashboard'
+import { useRecentTransactionsStore } from './recentTransactions'
 import { useTransactionsStore } from './transactions'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     useBudgetsStore().reset()
     useTransactionsStore().reset()
     useDashboardStore().reset()
+    useRecentTransactionsStore().reset()
   }
 
   async function login(credentials: Credentials) {
