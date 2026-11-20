@@ -211,6 +211,8 @@ curl -X POST http://localhost:8080/api/v1/transactions/import \
 
 `GET /health`: проверка работы API и подключения к базе, без авторизации.
 
+`GET /docs`: страница документации Swagger UI (http://localhost:8080/api/v1/docs), `GET /docs/openapi.json`: OpenAPI-спецификация, собранная из атрибутов контроллеров. Оба адреса без авторизации. Для авторизованных запросов в Swagger UI нажмите «Authorize» и вставьте токен из `/auth/login`. Скрипты Swagger UI загружаются с cdnjs, нужен доступ в интернет.
+
 ### Пример сеанса
 
 ```bash
