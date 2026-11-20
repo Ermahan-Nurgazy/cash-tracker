@@ -23,6 +23,12 @@ class BudgetController extends OwnedActiveController
 {
     public $modelClass = Budget::class;
 
+    /**
+     * Список бюджетов с фильтрами ?month=ГГГГ-ММ, ?category_id и ?currency.
+     *
+     * @return ActiveQuery запрос бюджетов текущего пользователя с загруженной категорией
+     * @throws BadRequestHttpException если month, category_id или currency имеют неверный формат
+     */
     protected function indexQuery(): ActiveQuery
     {
         $query = parent::indexQuery()->with('category');
@@ -55,6 +61,12 @@ class BudgetController extends OwnedActiveController
         return $query;
     }
 
+    /**
+     * Сортировка списка бюджетов: по месяцу (по умолчанию, новые первыми), лимиту,
+     * дате создания или id.
+     *
+     * @return array<string, mixed> конфигурация yii\data\Sort
+     */
     protected function sortConfig(): array
     {
         return [

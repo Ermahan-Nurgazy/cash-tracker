@@ -68,11 +68,24 @@ class SeedController extends Controller
         ],
     ];
 
+    /**
+     * Опции командной строки (--email, --password, --currency, --transactions, --force).
+     *
+     * @param string $actionID идентификатор действия
+     * @return string[] имена доступных опций
+     */
     public function options($actionID): array
     {
         return array_merge(parent::options($actionID), ['email', 'password', 'currency', 'transactions', 'force']);
     }
 
+    /**
+     * Создаёт демо-пользователя, счёт и категории, а с --transactions ещё операции и бюджеты.
+     * Всё выполняется в одной транзакции БД; ошибки выводятся в stderr, а не выбрасываются.
+     *
+     * @return int код выхода: OK, USAGE (короткий пароль) или UNSPECIFIED_ERROR
+     *         (запуск в prod без --force или ошибка при сохранении)
+     */
     public function actionIndex(): int
     {
         if (YII_ENV_PROD && !$this->force) {
@@ -112,6 +125,12 @@ class SeedController extends Controller
         return ExitCode::OK;
     }
 
+    /**
+     * Находит демо-пользователя по email или создаёт его.
+     *
+     * @return User существующий или созданный пользователь
+     * @throws RuntimeException если пользователя не удалось сохранить
+     */
     private function seedUser(): User
     {
         $email = mb_strtolower(trim((string) $this->email));
@@ -135,6 +154,13 @@ class SeedController extends Controller
         return $user;
     }
 
+    /**
+     * Создаёт демо-счёт «Наличные», если его ещё нет.
+     *
+     * @param User $user владелец счёта
+     * @return void
+     * @throws RuntimeException если счёт не удалось сохранить
+     */
     private function seedAccount(User $user): void
     {
         $exists = Account::find()->where(['user_id' => $user->id, 'name' => self::ACCOUNT_NAME])->exists();
@@ -152,6 +178,13 @@ class SeedController extends Controller
         $this->stdout('Счёт «' . self::ACCOUNT_NAME . "» ({$account->currency}): создан\n");
     }
 
+    /**
+     * Создаёт стандартные категории расходов и доходов, пропуская уже существующие.
+     *
+     * @param User $user владелец категорий
+     * @return void
+     * @throws RuntimeException если категорию не удалось сохранить
+     */
     private function seedCategories(User $user): void
     {
         $created = 0;
@@ -181,6 +214,11 @@ class SeedController extends Controller
     /**
      * Демо-операции для дашборда: зарплата и типичные расходы за последние 6 месяцев.
      * Суммы псевдослучайные, но с фиксированным зерном, поэтому результат повторяемый.
+     * Если у пользователя уже есть операции, ничего не добавляется.
+     *
+     * @param User $user владелец операций
+     * @return void
+     * @throws RuntimeException если не найден демо-счёт или операцию не удалось сохранить
      */
     private function seedTransactions(User $user): void
     {
@@ -244,6 +282,11 @@ class SeedController extends Controller
 
     /**
      * Демо-бюджеты на текущий месяц: небольшие лимиты, чтобы были видны разные статусы.
+     * Существующие бюджеты и отсутствующие категории пропускаются.
+     *
+     * @param User $user владелец бюджетов
+     * @return void
+     * @throws RuntimeException если бюджет не удалось сохранить
      */
     private function seedBudgets(User $user): void
     {
@@ -273,6 +316,13 @@ class SeedController extends Controller
         $this->stdout("Бюджеты на текущий месяц: создано {$created}\n");
     }
 
+    /**
+     * Сохраняет модель или бросает исключение с ошибками валидации.
+     *
+     * @param \yii\db\ActiveRecord $model сохраняемая модель
+     * @return void
+     * @throws \RuntimeException если модель не прошла валидацию или не сохранилась
+     */
     private function saveOrFail(\yii\db\ActiveRecord $model): void
     {
         if (!$model->save()) {

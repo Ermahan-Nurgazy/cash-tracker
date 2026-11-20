@@ -39,11 +39,21 @@ class Transaction extends ActiveRecord
 
     public const TYPES = Category::TYPES;
 
+    /**
+     * Имя таблицы БД.
+     *
+     * @return string имя таблицы с префиксом подключения
+     */
     public static function tableName(): string
     {
         return '{{%transaction}}';
     }
 
+    /**
+     * Поведения модели: автоматические created_at и updated_at.
+     *
+     * @return array<int, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         return [
@@ -51,6 +61,12 @@ class Transaction extends ActiveRecord
         ];
     }
 
+    /**
+     * Правила валидации: счёт и категория должны принадлежать тому же пользователю,
+     * сумма положительная, дата в формате ГГГГ-ММ-ДД.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -83,6 +99,12 @@ class Transaction extends ActiveRecord
 
     /**
      * Тип операции должен совпадать с типом выбранной категории.
+     *
+     * Встроенный валидатор: добавляет ошибку к атрибуту, исключений не бросает.
+     * Если категория не найдена или уже есть ошибка в category_id, проверка пропускается.
+     *
+     * @param string $attribute проверяемый атрибут (type)
+     * @return void
      */
     public function validateTypeMatchesCategory(string $attribute): void
     {
@@ -103,6 +125,8 @@ class Transaction extends ActiveRecord
     /**
      * Вместе с id в ответ всегда входят краткие account и category: фронтенду
      * не нужны дополнительные запросы, чтобы показать названия, цвета и валюту.
+     *
+     * @return array<string, mixed> поля JSON-ответа (user_id скрыт)
      */
     public function fields(): array
     {
@@ -125,6 +149,11 @@ class Transaction extends ActiveRecord
         return $fields;
     }
 
+    /**
+     * Подписи атрибутов для сообщений об ошибках.
+     *
+     * @return array<string, string> атрибут => подпись
+     */
     public function attributeLabels(): array
     {
         return [
@@ -137,16 +166,31 @@ class Transaction extends ActiveRecord
         ];
     }
 
+    /**
+     * Связь с владельцем операции.
+     *
+     * @return ActiveQuery запрос к пользователю (один)
+     */
     public function getUser(): ActiveQuery
     {
         return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
+    /**
+     * Связь со счётом операции.
+     *
+     * @return ActiveQuery запрос к счёту (один)
+     */
     public function getAccount(): ActiveQuery
     {
         return $this->hasOne(Account::class, ['id' => 'account_id']);
     }
 
+    /**
+     * Связь с категорией операции.
+     *
+     * @return ActiveQuery запрос к категории (один)
+     */
     public function getCategory(): ActiveQuery
     {
         return $this->hasOne(Category::class, ['id' => 'category_id']);

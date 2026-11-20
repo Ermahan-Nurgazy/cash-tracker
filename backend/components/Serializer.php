@@ -14,6 +14,12 @@ use yii\rest\Serializer as BaseSerializer;
  */
 class Serializer extends BaseSerializer
 {
+    /**
+     * Формирует тело ответа 422 с ошибками валидации и выставляет код статуса.
+     *
+     * @param Model $model модель, не прошедшая проверку
+     * @return array{status: int, message: string, errors: array<string, string>} поле => первое сообщение
+     */
     protected function serializeModelErrors($model): array
     {
         $this->response->setStatusCode(422);

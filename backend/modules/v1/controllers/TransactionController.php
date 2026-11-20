@@ -39,6 +39,14 @@ class TransactionController extends OwnedActiveController
     private const EXPORT_LIMIT = 10000;
     private const IMPORT_MAX_BYTES = 1048576;
 
+    /**
+     * Список операций с фильтрами date_from, date_to, account_id, category_id, type и q.
+     * Поиск q идёт по заметке без учёта регистра, спецсимволы LIKE экранируются.
+     *
+     * @return ActiveQuery запрос операций текущего пользователя с загруженными account и category
+     * @throws BadRequestHttpException если параметр неверного формата, date_from позже date_to,
+     *         type не expense и не income или q длиннее 100 символов
+     */
     protected function indexQuery(): ActiveQuery
     {
         $query = parent::indexQuery()->with(['account', 'category']);
@@ -86,6 +94,11 @@ class TransactionController extends OwnedActiveController
         return $query;
     }
 
+    /**
+     * Допустимые HTTP-методы: стандартные для CRUD плюс export (GET) и import (POST).
+     *
+     * @return array<string, string[]> действие => список методов
+     */
     protected function verbs(): array
     {
         return array_merge(parent::verbs(), [
@@ -97,6 +110,9 @@ class TransactionController extends OwnedActiveController
     /**
      * Экспорт в CSV с теми же фильтрами, что и у списка (кроме сортировки и страниц).
      * Файл: UTF-8 с BOM, разделитель «;», по возрастанию даты.
+     *
+     * @return string содержимое CSV (ответ отдаётся как есть, с заголовками вложения)
+     * @throws BadRequestHttpException если фильтры неверны или операций больше EXPORT_LIMIT
      */
     public function actionExport(): string
     {
@@ -120,6 +136,12 @@ class TransactionController extends OwnedActiveController
     /**
      * Импорт из CSV: тело запроса — сам файл (Content-Type: text/csv).
      * Всё или ничего: при ошибках в строках 422 с перечнем ошибок и ничего не сохраняется.
+     *
+     * @return array{imported: int}|array{status: int, message: string, errors: array<string, string>}
+     *         число сохранённых операций либо тело ответа 422 с ошибками
+     * @throws BadRequestHttpException если тело запроса пустое
+     * @throws HttpException со статусом 413, если файл больше 1 МБ
+     * @throws \Throwable если сохранение в БД не удалось
      */
     public function actionImport(): array
     {
@@ -151,6 +173,9 @@ class TransactionController extends OwnedActiveController
     /**
      * id добавлен вторым ключом, чтобы порядок при одинаковых значениях был стабильным
      * и записи не терялись и не дублировались между страницами.
+     *
+     * @return array<string, mixed> конфигурация yii\data\Sort: сортировка по дате (по умолчанию,
+     *         новые первыми), сумме или дате создания
      */
     protected function sortConfig(): array
     {

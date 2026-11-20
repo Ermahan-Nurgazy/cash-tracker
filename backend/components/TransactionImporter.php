@@ -21,7 +21,16 @@ final class TransactionImporter
     private const MAX_ERRORS = 50;
 
     /**
+     * Импортирует операции пользователя из CSV в одной транзакции БД.
+     *
+     * Ошибки данных (структура файла, значения, превышение лимитов) не бросают исключений,
+     * а возвращаются в errors; в этом случае ничего не сохраняется.
+     *
+     * @param int $userId владелец импортируемых операций
+     * @param string $raw содержимое CSV-файла
      * @return array{imported: int, errors: array<string, string>}
+     *         imported — число сохранённых операций, errors — метка («Строка 5») => сообщение
+     * @throws \Throwable если сохранение в БД не удалось (транзакция откатывается)
      */
     public function import(int $userId, string $raw): array
     {
@@ -87,10 +96,13 @@ final class TransactionImporter
     }
 
     /**
-     * @param array<string, mixed> $row
-     * @param array<string, Account> $accounts
-     * @param array<string, Category> $categories
-     * @return array{0: ?Transaction, 1: ?string}
+     * Проверяет строку CSV и собирает из неё несохранённую операцию.
+     *
+     * @param int $userId владелец операции
+     * @param array<string, mixed> $row строка из TransactionCsv::parse()
+     * @param array<string, Account> $accounts счета пользователя по имени в нижнем регистре
+     * @param array<string, Category> $categories категории пользователя по ключу «тип|имя в нижнем регистре»
+     * @return array{0: ?Transaction, 1: ?string} пара [модель, null] при успехе или [null, текст ошибки]
      */
     private function buildModel(int $userId, array $row, array $accounts, array $categories): array
     {
@@ -144,8 +156,10 @@ final class TransactionImporter
     }
 
     /**
-     * @param array<string, string> $errors
-     * @return array<string, string>
+     * Ограничивает список ошибок: сверх MAX_ERRORS добавляется одна итоговая запись.
+     *
+     * @param array<string, string> $errors все ошибки (метка => сообщение)
+     * @return array<string, string> не более MAX_ERRORS ошибок и запись «Ещё», если часть отброшена
      */
     private function limit(array $errors): array
     {

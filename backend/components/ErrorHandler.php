@@ -29,6 +29,15 @@ class ErrorHandler extends BaseErrorHandler
         500 => 'Внутренняя ошибка сервера.',
     ];
 
+    /**
+     * Преобразует исключение в тело ответа API.
+     *
+     * Статус берётся из HttpException, для остальных исключений это 500.
+     * В режиме отладки (YII_DEBUG) добавляется поле debug.
+     *
+     * @param Throwable $exception исключение, которое нужно показать клиенту
+     * @return array{status: int, message: string, debug?: array<string, mixed>} тело ответа
+     */
     protected function convertExceptionToArray($exception): array
     {
         $status = $exception instanceof HttpException ? $exception->statusCode : 500;
@@ -50,6 +59,17 @@ class ErrorHandler extends BaseErrorHandler
         return $result;
     }
 
+    /**
+     * Подбирает сообщение для клиента на русском языке.
+     *
+     * Русские сообщения HttpException отдаются как есть, английские тексты фреймворка
+     * заменяются стандартными по коду статуса. Внутренние сообщения других исключений
+     * клиенту не показываются.
+     *
+     * @param Throwable $exception исключение
+     * @param int $status HTTP-статус ответа
+     * @return string текст сообщения об ошибке
+     */
     private function messageFor(Throwable $exception, int $status): string
     {
         $message = $exception instanceof HttpException ? $exception->getMessage() : '';

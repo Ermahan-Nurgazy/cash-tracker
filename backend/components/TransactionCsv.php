@@ -38,7 +38,12 @@ final class TransactionCsv
     ];
 
     /**
+     * Формирует CSV-файл с операциями.
+     *
+     * Текстовые ячейки защищены от CSV-инъекции (см. safe()).
+     *
      * @param iterable<Transaction> $transactions операции с загруженными account и category
+     * @return string содержимое файла: UTF-8 с BOM, разделитель «;»
      */
     public static function export(iterable $transactions): string
     {
@@ -67,8 +72,12 @@ final class TransactionCsv
     /**
      * Читает CSV в список строк. Ошибки структуры (нет столбцов, пустой файл) возвращаются
      * в errors, ошибки значений проверяет импортёр, у него есть доступ к счетам и категориям.
+     * Пустые строки пропускаются. Кодировка и разделитель определяются автоматически.
      *
+     * @param string $raw содержимое файла как есть (UTF-8 с BOM или без, либо Windows-1251)
      * @return array{rows: list<array<string, mixed>>, errors: array<string, string>}
+     *         rows — строки данных с ключами столбцов и номером строки line,
+     *         errors — ошибки структуры файла (метка => сообщение)
      */
     public static function parse(string $raw): array
     {
@@ -124,7 +133,12 @@ final class TransactionCsv
         return ['rows' => $rows, 'errors' => []];
     }
 
-    /** ДД.ММ.ГГГГ или ГГГГ-ММ-ДД → ГГГГ-ММ-ДД; null, если даты не существует. */
+    /**
+     * Приводит дату к формату ГГГГ-ММ-ДД.
+     *
+     * @param string $value дата в формате ДД.ММ.ГГГГ или ГГГГ-ММ-ДД
+     * @return string|null дата ГГГГ-ММ-ДД или null, если формат не подходит или такой даты не существует
+     */
     public static function parseDate(string $value): ?string
     {
         foreach (['!Y-m-d', '!d.m.Y'] as $format) {
@@ -138,12 +152,25 @@ final class TransactionCsv
         return null;
     }
 
+    /**
+     * Определяет тип операции по тексту ячейки без учёта регистра.
+     *
+     * @param string $value «расход», «доход», «expense» или «income»
+     * @return string|null Category::TYPE_EXPENSE, Category::TYPE_INCOME или null для неизвестного значения
+     */
     public static function parseType(string $value): ?string
     {
         return self::TYPES[mb_strtolower($value)] ?? null;
     }
 
-    /** «1 234,5» → «1234.5»; null, если это не сумма с точностью до копеек. */
+    /**
+     * Нормализует сумму: убирает пробелы (в том числе неразрывные), запятую меняет на точку.
+     * Например, «1 234,5» → «1234.5».
+     *
+     * @param string $value сумма из ячейки
+     * @return string|null сумма строкой или null, если это не неотрицательное число
+     *         до 12 цифр с не более чем двумя знаками после запятой
+     */
     public static function parseAmount(string $value): ?string
     {
         $value = str_replace([' ', "\u{00A0}", "\u{202F}"], '', $value);
@@ -155,12 +182,22 @@ final class TransactionCsv
     /**
      * Защита от CSV-инъекции: ячейка, которая начинается с символа формулы, в Excel
      * была бы выполнена. Апостроф делает её обычным текстом.
+     *
+     * @param string $value текст ячейки
+     * @return string исходный текст или текст с апострофом в начале
      */
     private static function safe(string $value): string
     {
         return $value !== '' && strpbrk($value[0], "=+-@\t\r") !== false ? "'" . $value : $value;
     }
 
+    /**
+     * Приводит содержимое файла к UTF-8: отбрасывает BOM, а текст не в UTF-8
+     * считает Windows-1251.
+     *
+     * @param string $raw содержимое файла
+     * @return string текст в UTF-8 без BOM
+     */
     private static function toUtf8(string $raw): string
     {
         if (str_starts_with($raw, "\xEF\xBB\xBF")) {
@@ -171,6 +208,13 @@ final class TransactionCsv
         return mb_check_encoding($raw, 'UTF-8') ? $raw : mb_convert_encoding($raw, 'UTF-8', 'Windows-1251');
     }
 
+    /**
+     * Определяет разделитель по первой строке: берётся тот из «;», «,» и табуляции,
+     * который встречается чаще; при отсутствии всех — «;».
+     *
+     * @param string $raw содержимое файла в UTF-8
+     * @return string один символ-разделитель
+     */
     private static function detectDelimiter(string $raw): string
     {
         $firstLine = strtok($raw, "\n") ?: '';
@@ -189,7 +233,12 @@ final class TransactionCsv
         return $best;
     }
 
-    /** @param array<int, string|null> $record */
+    /**
+     * Проверяет, что все ячейки строки пустые.
+     *
+     * @param array<int, string|null> $record ячейки строки
+     * @return bool true, если в строке нет данных
+     */
     private static function isBlank(array $record): bool
     {
         foreach ($record as $cell) {
@@ -202,7 +251,10 @@ final class TransactionCsv
     }
 
     /**
-     * @param array<int, string|null> $header
+     * Сопоставляет заголовки файла с каноническими ключами столбцов без учёта регистра.
+     * Лишние столбцы игнорируются, при повторе заголовка берётся первый.
+     *
+     * @param array<int, string|null> $header ячейки строки заголовка
      * @return array<string, int> ключ столбца => индекс в строке
      */
     private static function mapHeader(array $header): array

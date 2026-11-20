@@ -27,11 +27,21 @@ class Account extends ActiveRecord
 {
     use OwnedByUserTrait;
 
+    /**
+     * Имя таблицы БД.
+     *
+     * @return string имя таблицы с префиксом подключения
+     */
     public static function tableName(): string
     {
         return '{{%account}}';
     }
 
+    /**
+     * Поведения модели: автоматические created_at и updated_at.
+     *
+     * @return array<int, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         return [
@@ -39,6 +49,12 @@ class Account extends ActiveRecord
         ];
     }
 
+    /**
+     * Правила валидации: название уникально в пределах пользователя,
+     * валюта — три латинские буквы в верхнем регистре.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -58,6 +74,11 @@ class Account extends ActiveRecord
 
     /**
      * Валюту нельзя менять, если по счёту уже есть операции: суммы потеряли бы смысл.
+     *
+     * Встроенный валидатор: добавляет ошибку к атрибуту, исключений не бросает.
+     *
+     * @param string $attribute проверяемый атрибут (currency)
+     * @return void
      */
     public function validateCurrencyChange(string $attribute): void
     {
@@ -66,6 +87,11 @@ class Account extends ActiveRecord
         }
     }
 
+    /**
+     * Подписи атрибутов для сообщений об ошибках.
+     *
+     * @return array<string, string> атрибут => подпись
+     */
     public function attributeLabels(): array
     {
         return [
@@ -75,11 +101,21 @@ class Account extends ActiveRecord
         ];
     }
 
+    /**
+     * Связь с владельцем счёта.
+     *
+     * @return ActiveQuery запрос к пользователю (один)
+     */
     public function getUser(): ActiveQuery
     {
         return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
+    /**
+     * Связь с операциями по счёту.
+     *
+     * @return ActiveQuery запрос к операциям (много)
+     */
     public function getTransactions(): ActiveQuery
     {
         return $this->hasMany(Transaction::class, ['account_id' => 'id']);

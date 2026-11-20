@@ -22,6 +22,11 @@ class AuthController extends Controller
 {
     public $serializer = 'app\components\Serializer';
 
+    /**
+     * Подключает Bearer-аутентификацию ко всем действиям, кроме register и login.
+     *
+     * @return array<string, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         $behaviors = parent::behaviors();
@@ -34,6 +39,11 @@ class AuthController extends Controller
         return $behaviors;
     }
 
+    /**
+     * Допустимые HTTP-методы действий.
+     *
+     * @return array<string, string[]> действие => список методов
+     */
     protected function verbs(): array
     {
         return [
@@ -44,6 +54,13 @@ class AuthController extends Controller
         ];
     }
 
+    /**
+     * POST /api/v1/auth/register: регистрирует пользователя.
+     *
+     * @return array{user: User, access_token: string}|RegisterForm данные пользователя
+     *         и токен (статус 201) либо форма с ошибками валидации (422)
+     * @throws \yii\web\UnprocessableEntityHttpException если пользователя не удалось сохранить
+     */
     public function actionRegister()
     {
         $form = new RegisterForm();
@@ -59,6 +76,13 @@ class AuthController extends Controller
         return $this->authPayload($user);
     }
 
+    /**
+     * POST /api/v1/auth/login: проверяет email и пароль и выдаёт новый токен.
+     *
+     * @return array{user: User, access_token: string}|LoginForm данные пользователя
+     *         и токен либо форма с ошибками валидации (422)
+     * @throws UnauthorizedHttpException если email или пароль неверны (одно сообщение на оба случая)
+     */
     public function actionLogin()
     {
         $form = new LoginForm();
@@ -78,6 +102,11 @@ class AuthController extends Controller
         return $this->authPayload($user);
     }
 
+    /**
+     * GET /api/v1/auth/me: текущий пользователь.
+     *
+     * @return User аутентифицированный пользователь (без секретных полей)
+     */
     public function actionMe(): User
     {
         /** @var User $user */
@@ -86,6 +115,11 @@ class AuthController extends Controller
         return $user;
     }
 
+    /**
+     * POST /api/v1/auth/logout: сбрасывает токен текущего пользователя.
+     *
+     * @return null пустое тело, статус 204
+     */
     public function actionLogout()
     {
         /** @var User $user */
@@ -98,6 +132,12 @@ class AuthController extends Controller
         return null;
     }
 
+    /**
+     * Тело ответа для регистрации и входа.
+     *
+     * @param User $user пользователь с актуальным токеном
+     * @return array{user: User, access_token: string|null} пользователь и его токен
+     */
     private function authPayload(User $user): array
     {
         return [

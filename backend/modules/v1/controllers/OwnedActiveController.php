@@ -23,6 +23,11 @@ abstract class OwnedActiveController extends ActiveController
 {
     public $serializer = 'app\components\Serializer';
 
+    /**
+     * Подключает аутентификацию по Bearer-токену ко всем действиям, кроме options.
+     *
+     * @return array<string, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         $behaviors = parent::behaviors();
@@ -35,6 +40,12 @@ abstract class OwnedActiveController extends ActiveController
         return $behaviors;
     }
 
+    /**
+     * Стандартные действия ActiveController, кроме create и delete (они реализованы здесь),
+     * со своим провайдером данных для списка.
+     *
+     * @return array<string, mixed> конфигурации действий
+     */
     public function actions(): array
     {
         $actions = parent::actions();
@@ -49,6 +60,12 @@ abstract class OwnedActiveController extends ActiveController
 
     /**
      * Чужие записи скрываем под видом несуществующих.
+     *
+     * @param string $action идентификатор действия
+     * @param \yii\base\Model|null $model проверяемая запись (null — проверка не нужна)
+     * @param array<string, mixed> $params дополнительные параметры
+     * @return void
+     * @throws NotFoundHttpException если запись принадлежит другому пользователю
      */
     public function checkAccess($action, $model = null, $params = [])
     {
@@ -57,6 +74,13 @@ abstract class OwnedActiveController extends ActiveController
         }
     }
 
+    /**
+     * Провайдер данных для списка: записи пользователя, пагинация (по умолчанию 50,
+     * не более 100 на страницу) и сортировка из sortConfig().
+     *
+     * @return ActiveDataProvider провайдер данных
+     * @throws \yii\web\BadRequestHttpException если наследник отклонил параметры фильтра
+     */
     public function prepareDataProvider(): ActiveDataProvider
     {
         return new ActiveDataProvider([
@@ -69,6 +93,13 @@ abstract class OwnedActiveController extends ActiveController
         ]);
     }
 
+    /**
+     * POST: создаёт запись; владельцем становится текущий пользователь.
+     *
+     * @return ActiveRecord созданная запись (201 и заголовок Location) либо запись
+     *         с ошибками валидации (будет отдана как 422)
+     * @throws ServerErrorHttpException если сохранить не удалось без ошибок валидации
+     */
     public function actionCreate()
     {
         /** @var ActiveRecord $model */
@@ -87,6 +118,15 @@ abstract class OwnedActiveController extends ActiveController
         return $model;
     }
 
+    /**
+     * DELETE: удаляет запись пользователя.
+     *
+     * @param int|string $id идентификатор записи
+     * @return null пустое тело, статус 204
+     * @throws NotFoundHttpException если записи нет или она чужая
+     * @throws \yii\web\ConflictHttpException если запись удалять нельзя (см. assertDeletable())
+     * @throws ServerErrorHttpException если удаление не удалось
+     */
     public function actionDelete($id)
     {
         $model = $this->findOwnedModel($id);
@@ -103,6 +143,9 @@ abstract class OwnedActiveController extends ActiveController
 
     /**
      * Запрос списка: только записи текущего пользователя. Фильтры добавляют наследники.
+     *
+     * @return ActiveQuery запрос, ограниченный текущим пользователем
+     * @throws \yii\web\BadRequestHttpException в наследниках — при неверных параметрах фильтра
      */
     protected function indexQuery(): ActiveQuery
     {
@@ -114,16 +157,30 @@ abstract class OwnedActiveController extends ActiveController
 
     /**
      * Настройки сортировки списка (параметр ?sort=name или ?sort=-name).
+     *
+     * @return array<string, mixed> конфигурация yii\data\Sort: белый список attributes и defaultOrder
      */
     abstract protected function sortConfig(): array;
 
     /**
      * Бросает исключение, если запись нельзя удалять (например, на неё ссылаются операции).
+     * В базовой реализации ограничений нет.
+     *
+     * @param ActiveRecord $model удаляемая запись
+     * @return void
+     * @throws \yii\web\ConflictHttpException в наследниках — если запись удалять нельзя
      */
     protected function assertDeletable(ActiveRecord $model): void
     {
     }
 
+    /**
+     * Находит запись по id и проверяет, что она принадлежит текущему пользователю.
+     *
+     * @param int|string $id идентификатор записи
+     * @return ActiveRecord найденная запись
+     * @throws NotFoundHttpException если записи нет или она чужая
+     */
     protected function findOwnedModel($id): ActiveRecord
     {
         /** @var ActiveRecord $class */

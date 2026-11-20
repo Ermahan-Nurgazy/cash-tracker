@@ -13,6 +13,11 @@ use yii\rest\Controller;
  */
 class HealthController extends Controller
 {
+    /**
+     * Поведения контроллера: эндпоинт публичный, поэтому лимитер запросов отключён.
+     *
+     * @return array<string, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         $behaviors = parent::behaviors();
@@ -23,6 +28,11 @@ class HealthController extends Controller
         return $behaviors;
     }
 
+    /**
+     * Допустимые HTTP-методы действий.
+     *
+     * @return array<string, string[]> действие => список методов
+     */
     protected function verbs(): array
     {
         return [
@@ -30,6 +40,14 @@ class HealthController extends Controller
         ];
     }
 
+    /**
+     * GET /api/v1/health: проверяет соединение с БД.
+     *
+     * Недоступность БД не приводит к ошибке: она отражается в ответе, а причина пишется в лог.
+     *
+     * @return array{status: string, database: string, time: string}
+     *         status — ok или degraded, database — up или down, time — UTC в формате ATOM
+     */
     public function actionIndex(): array
     {
         $database = 'up';

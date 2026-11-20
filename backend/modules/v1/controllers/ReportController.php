@@ -30,6 +30,11 @@ class ReportController extends Controller
 
     private const MAX_MONTHS = 60;
 
+    /**
+     * Подключает Bearer-аутентификацию ко всем действиям.
+     *
+     * @return array<string, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         $behaviors = parent::behaviors();
@@ -38,6 +43,11 @@ class ReportController extends Controller
         return $behaviors;
     }
 
+    /**
+     * Допустимые HTTP-методы действий.
+     *
+     * @return array<string, string[]> действие => список методов
+     */
     protected function verbs(): array
     {
         return [
@@ -47,6 +57,17 @@ class ReportController extends Controller
         ];
     }
 
+    /**
+     * GET /api/v1/reports/categories: суммы по категориям за период, по блокам валют.
+     *
+     * Параметры: date_from и date_to (по умолчанию текущий месяц; если задан один — нужен и второй),
+     * type (expense по умолчанию), account_id.
+     *
+     * @return array{type: string, period: array{date_from: string, date_to: string}, currencies: list<array<string, mixed>>}
+     *         по каждой валюте: итог, число операций и категории с долей в процентах
+     * @throws BadRequestHttpException если параметры неверны, указан только один край периода,
+     *         date_from позже date_to или type не expense и не income
+     */
     public function actionCategories(): array
     {
         $today = new DateTimeImmutable('today');
@@ -122,6 +143,16 @@ class ReportController extends Controller
         ];
     }
 
+    /**
+     * GET /api/v1/reports/monthly: доходы, расходы и итог по месяцам, по блокам валют.
+     *
+     * Параметры: date_from и date_to (по умолчанию последние 12 месяцев по сегодня),
+     * account_id. Месяцы без операций заполняются нулями.
+     *
+     * @return array{period: array{date_from: string, date_to: string}, currencies: list<array<string, mixed>>}
+     * @throws BadRequestHttpException если параметры неверны, date_from позже date_to
+     *         или период длиннее 60 месяцев
+     */
     public function actionMonthly(): array
     {
         $from = $this->dateParam('date_from');
@@ -200,6 +231,12 @@ class ReportController extends Controller
         ];
     }
 
+    /**
+     * GET /api/v1/reports/balances: остатки по счетам (начальный баланс + доходы − расходы)
+     * и итог по каждой валюте.
+     *
+     * @return array{accounts: list<array<string, mixed>>, totals: list<array{currency: string, balance: string}>}
+     */
     public function actionBalances(): array
     {
         $userId = Yii::$app->user->id;
@@ -257,6 +294,11 @@ class ReportController extends Controller
     /**
      * Операции текущего пользователя за период; account_id необязателен.
      * Счёт соединяется всегда: он нужен для валюты.
+     *
+     * @param string $from начало периода, ГГГГ-ММ-ДД (включительно)
+     * @param string $to конец периода, ГГГГ-ММ-ДД (включительно)
+     * @return Query запрос с алиасами t (операция) и a (счёт)
+     * @throws BadRequestHttpException если account_id не целое число
      */
     private function baseQuery(string $from, string $to): Query
     {
@@ -274,6 +316,14 @@ class ReportController extends Controller
         return $query;
     }
 
+    /**
+     * Проверяет, что период задан полностью и границы идут по порядку.
+     *
+     * @param string|null $from начало периода
+     * @param string|null $to конец периода
+     * @return void
+     * @throws BadRequestHttpException если не указана одна из границ или $from позже $to
+     */
     private function assertRange(?string $from, ?string $to): void
     {
         if ($from === null || $to === null) {
@@ -286,6 +336,11 @@ class ReportController extends Controller
     }
 
     /**
+     * Перечисляет месяцы периода. Список обрывается на MAX_MONTHS + 1 элементе,
+     * чтобы вызывающий мог отклонить слишком длинный период, не строя огромный массив.
+     *
+     * @param string $from начало периода, ГГГГ-ММ-ДД
+     * @param string $to конец периода, ГГГГ-ММ-ДД
      * @return string[] месяцы в формате Y-m от месяца date_from до месяца date_to
      */
     private function monthList(string $from, string $to): array
@@ -304,6 +359,9 @@ class ReportController extends Controller
 
     /**
      * Сумма в копейках целым числом: складывать так надёжнее, чем float.
+     *
+     * @param string|int|float|null $value значение numeric из БД (null считается нулём)
+     * @return int сумма в копейках, может быть отрицательной
      */
     private function cents(string|int|float|null $value): int
     {
@@ -320,6 +378,12 @@ class ReportController extends Controller
         return $negative ? -$cents : $cents;
     }
 
+    /**
+     * Форматирует копейки как строку с двумя знаками («1234.50», «-5.00»).
+     *
+     * @param int $cents сумма в копейках, может быть отрицательной
+     * @return string сумма строкой, без превращения в float
+     */
     private function money(int $cents): string
     {
         $sign = $cents < 0 ? '-' : '';
