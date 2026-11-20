@@ -2,6 +2,7 @@
 
 namespace app\modules\v1\controllers;
 
+use OpenApi\Attributes as OA;
 use Throwable;
 use Yii;
 use yii\rest\Controller;
@@ -48,6 +49,21 @@ class HealthController extends Controller
      * @return array{status: string, database: string, time: string}
      *         status — ok или degraded, database — up или down, time — UTC в формате ATOM
      */
+    #[OA\Get(
+        path: '/health',
+        operationId: 'healthCheck',
+        summary: 'Проверка работы API и БД',
+        description: 'Публичный адрес. Если БД недоступна, ответ остаётся 200, но status=degraded, database=down.',
+        tags: ['Health'],
+        security: [],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Состояние API и базы данных',
+                content: new OA\JsonContent(ref: '#/components/schemas/Health'),
+            ),
+        ],
+    )]
     public function actionIndex(): array
     {
         $database = 'up';

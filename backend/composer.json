@@ -10,14 +10,15 @@
     "ext-intl": "*",
     "ext-pdo": "*",
     "ext-pdo_pgsql": "*",
-    "yiisoft/yii2": "~2.0.51"
+    "yiisoft/yii2": "~2.0.51",
+    "zircote/swagger-php": "^7.8"
   },
   "require-dev": {
-    "yiisoft/yii2-gii": "~2.2.0",
     "codeception/codeception": "^5.1",
     "codeception/module-asserts": "^3.0",
     "codeception/module-rest": "^3.3",
-    "codeception/module-yii2": "^1.1"
+    "codeception/module-yii2": "^1.1",
+    "yiisoft/yii2-gii": "~2.2.0"
   },
   "replace": {
     "bower-asset/inputmask": "*",

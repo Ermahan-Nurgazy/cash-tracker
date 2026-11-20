@@ -55,6 +55,11 @@ return [
                 'GET api/v1/health' => 'v1/health/index',
                 'api/v1/health' => 'v1/health/index',
 
+                'GET api/v1/docs' => 'v1/docs/index',
+                'api/v1/docs' => 'v1/docs/index',
+                'GET api/v1/docs/openapi.json' => 'v1/docs/spec',
+                'api/v1/docs/openapi.json' => 'v1/docs/spec',
+
                 'POST api/v1/auth/register' => 'v1/auth/register',
                 'api/v1/auth/register' => 'v1/auth/register',
                 'POST api/v1/auth/login' => 'v1/auth/login',

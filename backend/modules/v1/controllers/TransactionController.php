@@ -6,6 +6,7 @@ use app\components\TransactionCsv;
 use app\components\TransactionImporter;
 use app\models\Category;
 use app\models\Transaction;
+use OpenApi\Attributes as OA;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\web\BadRequestHttpException;
@@ -30,6 +31,116 @@ use yii\web\Response;
  * В каждой операции есть вложенные account {id, name, currency}
  * и category {id, name, type, color, icon}.
  */
+#[OA\Get(
+    path: '/transactions',
+    operationId: 'transactionList',
+    summary: 'Список операций',
+    description: 'Только операции текущего пользователя, с вложенными account и category. Пагинация в заголовках X-Pagination-*.',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    parameters: [
+        new OA\Parameter(name: 'date_from', in: 'query', description: 'Начало периода, включительно', schema: new OA\Schema(type: 'string', format: 'date')),
+        new OA\Parameter(name: 'date_to', in: 'query', description: 'Конец периода, включительно', schema: new OA\Schema(type: 'string', format: 'date')),
+        new OA\Parameter(name: 'account_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+        new OA\Parameter(name: 'category_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+        new OA\Parameter(name: 'type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['expense', 'income'])),
+        new OA\Parameter(name: 'q', in: 'query', description: 'Поиск по заметке без учёта регистра, до 100 символов', schema: new OA\Schema(type: 'string', maxLength: 100)),
+        new OA\Parameter(name: 'sort', in: 'query', description: 'Сортировка: occurred_at (по умолчанию -occurred_at), amount, created_at', schema: new OA\Schema(type: 'string', example: '-occurred_at')),
+        new OA\Parameter(ref: '#/components/parameters/Page'),
+        new OA\Parameter(ref: '#/components/parameters/PerPage'),
+    ],
+    responses: [
+        new OA\Response(
+            response: 200,
+            description: 'Страница операций',
+            headers: [
+                new OA\Header(header: 'X-Pagination-Total-Count', schema: new OA\Schema(type: 'integer')),
+                new OA\Header(header: 'X-Pagination-Current-Page', schema: new OA\Schema(type: 'integer')),
+                new OA\Header(header: 'X-Pagination-Page-Count', schema: new OA\Schema(type: 'integer')),
+                new OA\Header(header: 'X-Pagination-Per-Page', schema: new OA\Schema(type: 'integer')),
+            ],
+            content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Transaction')),
+        ),
+        new OA\Response(ref: '#/components/responses/BadRequest', response: 400),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+    ],
+)]
+#[OA\Post(
+    path: '/transactions',
+    operationId: 'transactionCreate',
+    summary: 'Создать операцию',
+    description: 'Тип операции должен совпадать с типом категории.',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/TransactionInput')),
+    responses: [
+        new OA\Response(
+            response: 201,
+            description: 'Операция создана; адрес в заголовке Location',
+            headers: [new OA\Header(header: 'Location', schema: new OA\Schema(type: 'string', format: 'uri'))],
+            content: new OA\JsonContent(ref: '#/components/schemas/Transaction'),
+        ),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        new OA\Response(ref: '#/components/responses/ValidationFailed', response: 422),
+    ],
+)]
+#[OA\Get(
+    path: '/transactions/{id}',
+    operationId: 'transactionView',
+    summary: 'Операция по id',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    parameters: [new OA\Parameter(ref: '#/components/parameters/RecordId')],
+    responses: [
+        new OA\Response(response: 200, description: 'Операция', content: new OA\JsonContent(ref: '#/components/schemas/Transaction')),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        new OA\Response(ref: '#/components/responses/NotFound', response: 404),
+    ],
+)]
+#[OA\Put(
+    path: '/transactions/{id}',
+    operationId: 'transactionUpdate',
+    summary: 'Обновить операцию',
+    description: 'PATCH работает так же.',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    parameters: [new OA\Parameter(ref: '#/components/parameters/RecordId')],
+    requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/TransactionInput')),
+    responses: [
+        new OA\Response(response: 200, description: 'Операция обновлена', content: new OA\JsonContent(ref: '#/components/schemas/Transaction')),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        new OA\Response(ref: '#/components/responses/NotFound', response: 404),
+        new OA\Response(ref: '#/components/responses/ValidationFailed', response: 422),
+    ],
+)]
+#[OA\Patch(
+    path: '/transactions/{id}',
+    operationId: 'transactionPatch',
+    summary: 'Частично обновить операцию',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    parameters: [new OA\Parameter(ref: '#/components/parameters/RecordId')],
+    requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/TransactionInput')),
+    responses: [
+        new OA\Response(response: 200, description: 'Операция обновлена', content: new OA\JsonContent(ref: '#/components/schemas/Transaction')),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        new OA\Response(ref: '#/components/responses/NotFound', response: 404),
+        new OA\Response(ref: '#/components/responses/ValidationFailed', response: 422),
+    ],
+)]
+#[OA\Delete(
+    path: '/transactions/{id}',
+    operationId: 'transactionDelete',
+    summary: 'Удалить операцию',
+    tags: ['Transactions'],
+    security: [['bearerAuth' => []]],
+    parameters: [new OA\Parameter(ref: '#/components/parameters/RecordId')],
+    responses: [
+        new OA\Response(response: 204, description: 'Операция удалена, тела нет'),
+        new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        new OA\Response(ref: '#/components/responses/NotFound', response: 404),
+    ],
+)]
 class TransactionController extends OwnedActiveController
 {
     use QueryParamsTrait;
@@ -114,6 +225,33 @@ class TransactionController extends OwnedActiveController
      * @return string содержимое CSV (ответ отдаётся как есть, с заголовками вложения)
      * @throws BadRequestHttpException если фильтры неверны или операций больше EXPORT_LIMIT
      */
+    #[OA\Get(
+        path: '/transactions/export',
+        operationId: 'transactionExport',
+        summary: 'Экспорт операций в CSV',
+        description: 'Те же фильтры, что у списка (без сортировки и страниц). UTF-8 с BOM, разделитель «;», '
+            . 'по возрастанию даты. Не больше 10 000 операций за раз.',
+        tags: ['Transactions'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'date_from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'account_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'category_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['expense', 'income'])),
+            new OA\Parameter(name: 'q', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 100)),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'CSV-файл (вложение)',
+                headers: [new OA\Header(header: 'Content-Disposition', schema: new OA\Schema(type: 'string', example: 'attachment; filename="transactions-2026-11-20.csv"'))],
+                content: new OA\MediaType(mediaType: 'text/csv', schema: new OA\Schema(type: 'string', format: 'binary')),
+            ),
+            new OA\Response(ref: '#/components/responses/BadRequest', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionExport(): string
     {
         $query = $this->indexQuery()->orderBy(['occurred_at' => SORT_ASC, 'id' => SORT_ASC]);
@@ -143,6 +281,41 @@ class TransactionController extends OwnedActiveController
      * @throws HttpException со статусом 413, если файл больше 1 МБ
      * @throws \Throwable если сохранение в БД не удалось
      */
+    #[OA\Post(
+        path: '/transactions/import',
+        operationId: 'transactionImport',
+        summary: 'Импорт операций из CSV',
+        description: 'Тело запроса — сам CSV-файл (до 1 МБ и 2000 строк). Всё или ничего: при ошибках в строках '
+            . 'ничего не сохраняется, в ответе 422 — перечень ошибок по строкам.',
+        tags: ['Transactions'],
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'text/csv',
+                schema: new OA\Schema(type: 'string', format: 'binary', description: 'Столбцы: Дата;Тип;Сумма;Валюта;Счёт;Категория;Заметка'),
+            ),
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Операции импортированы',
+                content: new OA\JsonContent(ref: '#/components/schemas/ImportResult'),
+            ),
+            new OA\Response(ref: '#/components/responses/BadRequest', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+            new OA\Response(
+                response: 413,
+                description: 'Файл больше 1 МБ',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error'),
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'В файле есть ошибки, ничего не сохранено',
+                content: new OA\JsonContent(ref: '#/components/schemas/ImportError'),
+            ),
+        ],
+    )]
     public function actionImport(): array
     {
         $raw = Yii::$app->request->getRawBody();

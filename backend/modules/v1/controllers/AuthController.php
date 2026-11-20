@@ -5,6 +5,7 @@ namespace app\modules\v1\controllers;
 use app\models\LoginForm;
 use app\models\RegisterForm;
 use app\models\User;
+use OpenApi\Attributes as OA;
 use Yii;
 use yii\filters\auth\HttpBearerAuth;
 use yii\rest\Controller;
@@ -61,6 +62,26 @@ class AuthController extends Controller
      *         и токен (статус 201) либо форма с ошибками валидации (422)
      * @throws \yii\web\UnprocessableEntityHttpException если пользователя не удалось сохранить
      */
+    #[OA\Post(
+        path: '/auth/register',
+        operationId: 'authRegister',
+        summary: 'Регистрация',
+        description: 'Создаёт пользователя и сразу выдаёт токен. Пароль: 8–72 символа.',
+        tags: ['Auth'],
+        security: [],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Credentials'),
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Пользователь создан',
+                content: new OA\JsonContent(ref: '#/components/schemas/AuthPayload'),
+            ),
+            new OA\Response(ref: '#/components/responses/ValidationFailed', response: 422),
+        ],
+    )]
     public function actionRegister()
     {
         $form = new RegisterForm();
@@ -83,6 +104,31 @@ class AuthController extends Controller
      *         и токен либо форма с ошибками валидации (422)
      * @throws UnauthorizedHttpException если email или пароль неверны (одно сообщение на оба случая)
      */
+    #[OA\Post(
+        path: '/auth/login',
+        operationId: 'authLogin',
+        summary: 'Вход',
+        description: 'Проверяет email и пароль и выдаёт новый токен; предыдущий токен перестаёт действовать.',
+        tags: ['Auth'],
+        security: [],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(ref: '#/components/schemas/Credentials'),
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Вход выполнен',
+                content: new OA\JsonContent(ref: '#/components/schemas/AuthPayload'),
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Неверный email или пароль',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error'),
+            ),
+            new OA\Response(ref: '#/components/responses/ValidationFailed', response: 422),
+        ],
+    )]
     public function actionLogin()
     {
         $form = new LoginForm();
@@ -107,6 +153,21 @@ class AuthController extends Controller
      *
      * @return User аутентифицированный пользователь (без секретных полей)
      */
+    #[OA\Get(
+        path: '/auth/me',
+        operationId: 'authMe',
+        summary: 'Текущий пользователь',
+        tags: ['Auth'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Текущий пользователь',
+                content: new OA\JsonContent(ref: '#/components/schemas/User'),
+            ),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionMe(): User
     {
         /** @var User $user */
@@ -120,6 +181,18 @@ class AuthController extends Controller
      *
      * @return null пустое тело, статус 204
      */
+    #[OA\Post(
+        path: '/auth/logout',
+        operationId: 'authLogout',
+        summary: 'Выход',
+        description: 'Сбрасывает токен текущего пользователя.',
+        tags: ['Auth'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 204, description: 'Токен сброшен, тела нет'),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionLogout()
     {
         /** @var User $user */

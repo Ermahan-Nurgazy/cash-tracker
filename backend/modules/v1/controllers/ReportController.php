@@ -4,6 +4,7 @@ namespace app\modules\v1\controllers;
 
 use app\models\Category;
 use DateTimeImmutable;
+use OpenApi\Attributes as OA;
 use Yii;
 use yii\db\Query;
 use yii\filters\auth\HttpBearerAuth;
@@ -68,6 +69,29 @@ class ReportController extends Controller
      * @throws BadRequestHttpException если параметры неверны, указан только один край периода,
      *         date_from позже date_to или type не expense и не income
      */
+    #[OA\Get(
+        path: '/reports/categories',
+        operationId: 'reportCategories',
+        summary: 'Отчёт по категориям',
+        description: 'Суммы, число операций и доля по категориям за период, отдельным блоком на каждую валюту.',
+        tags: ['Reports'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'date_from', in: 'query', description: 'Начало периода; по умолчанию начало текущего месяца (если задан один край, нужен и второй)', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', description: 'Конец периода, включительно', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['expense', 'income'], default: 'expense')),
+            new OA\Parameter(name: 'account_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Отчёт по категориям',
+                content: new OA\JsonContent(ref: '#/components/schemas/CategoriesReport'),
+            ),
+            new OA\Response(ref: '#/components/responses/BadRequest', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionCategories(): array
     {
         $today = new DateTimeImmutable('today');
@@ -153,6 +177,28 @@ class ReportController extends Controller
      * @throws BadRequestHttpException если параметры неверны, date_from позже date_to
      *         или период длиннее 60 месяцев
      */
+    #[OA\Get(
+        path: '/reports/monthly',
+        operationId: 'reportMonthly',
+        summary: 'Динамика по месяцам',
+        description: 'Доходы, расходы и итог по месяцам, отдельным блоком на каждую валюту. Период не длиннее 60 месяцев.',
+        tags: ['Reports'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'date_from', in: 'query', description: 'Начало периода; по умолчанию 12 месяцев назад', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', description: 'Конец периода; по умолчанию сегодня', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'account_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Помесячный отчёт',
+                content: new OA\JsonContent(ref: '#/components/schemas/MonthlyReport'),
+            ),
+            new OA\Response(ref: '#/components/responses/BadRequest', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionMonthly(): array
     {
         $from = $this->dateParam('date_from');
@@ -237,6 +283,22 @@ class ReportController extends Controller
      *
      * @return array{accounts: list<array<string, mixed>>, totals: list<array{currency: string, balance: string}>}
      */
+    #[OA\Get(
+        path: '/reports/balances',
+        operationId: 'reportBalances',
+        summary: 'Остатки по счетам',
+        description: 'Начальный остаток + доходы − расходы по каждому счёту и итог по каждой валюте.',
+        tags: ['Reports'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Остатки по счетам',
+                content: new OA\JsonContent(ref: '#/components/schemas/BalancesReport'),
+            ),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+        ],
+    )]
     public function actionBalances(): array
     {
         $userId = Yii::$app->user->id;

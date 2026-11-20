@@ -10,7 +10,7 @@ components/    ErrorHandler, Serializer, импорт и экспорт CSV
 config/        web.php (маршруты, CORS), console.php, params.php
 migrations/    user, account, category, transaction, budget
 models/        ActiveRecord-модели и формы (LoginForm, RegisterForm)
-modules/v1/    контроллеры API версии 1
+modules/v1/    контроллеры API версии 1; docs/ — общие Swagger-компоненты
 tests/         Codeception: Api (сценарии HTTP) и Unit (модели)
 ```
 
@@ -27,6 +27,7 @@ docker compose exec php php yii migrate/create <имя>          # новая м
 docker compose exec php php yii seed --transactions           # демо-данные
 docker compose exec php php vendor/bin/codecept run           # все тесты
 docker compose exec php php vendor/bin/codecept run Api AccountCest   # один файл
+docker compose exec php php vendor/bin/openapi modules -o /tmp/openapi.json   # собрать OpenAPI-спецификацию из атрибутов (не должно быть [warning] и [error])
 ```
 
 Тесты идут в отдельной БД `cash_tracker_test`. Её создание и миграции — по README, раздел «Тесты и проверки». После новой миграции примените её и к тестовой БД: `docker compose exec -e DB_NAME=cash_tracker_test php php yii migrate --interactive=0`.
@@ -35,6 +36,7 @@ docker compose exec php php vendor/bin/codecept run Api AccountCest   # один
 
 - Комментарии, PHPDoc, сообщения валидации и ошибок — по-русски, как в существующем коде. Идентификаторы — по-английски.
 - Каждая функция и метод в модулях backend-а (`modules/`, а также `models/`, `components/`, `commands/`) описываются PHPDoc-аннотацией: краткое описание на русском, `@param` для каждого параметра, `@return` (кроме `void` и конструкторов), `@throws` для выбрасываемых исключений. При добавлении или изменении метода обновляйте и его PHPDoc.
+- Каждый endpoint описывается Swagger-атрибутами (`zircote/swagger-php`, `use OpenApi\Attributes as OA;`): `OA\Get|Post|Put|Patch|Delete` с `path`, `operationId`, `summary`, `tags` и `security` (`[['bearerAuth' => []]]`, для публичных — `[]`), параметры (`OA\Parameter`) и тело запроса (`OA\RequestBody`), а также `OA\Response` для успешного ответа и для всех ошибочных кодов, которые endpoint может вернуть (400, 401, 404, 409, 413, 422 и т. д.). Атрибуты ставятся на метод действия, а для унаследованных CRUD-действий `ActiveController` — на класс контроллера. Повторяющиеся ответы, параметры и схемы берутся ссылкой (`#/components/...`) из `modules/v1/docs/` (`ApiResponses`, `ApiParameters`, `ApiSchemas`); новую схему данных добавляйте туда же, в отдельные классы по виду компонента (атрибуты разных видов на одном классе вкладываются друг в друга). Новый или изменённый endpoint без актуального описания не принимается. Спецификация и страница Swagger UI отдаются самим API: `GET /api/v1/docs` и `GET /api/v1/docs/openapi.json` (`DocsController`).
 - Контроллеры ресурсов наследуют `OwnedActiveController` (CRUD, изоляция по пользователю, пагинация и сортировка). Особенности ресурса задаются в `sortConfig()`, `assertDeletable()` и подобных методах, а не переписыванием действий.
 - В модели с владельцем (`user_id`) подключайте `OwnedByUserTrait`: владелец задаётся сервером, не берётся из тела запроса и не попадает в ответ. Все выборки идут только по данным текущего пользователя; чужая запись — 404, а не 403.
 - Ошибки — через исключения Yii (`NotFoundHttpException`, `ConflictHttpException` и т. д.). Формат `{"status", "message"}` и `errors` для 422 формирует `components/ErrorHandler`, свой формат в контроллерах не делайте. В режиме `prod` в ответе нет поля `debug`.
