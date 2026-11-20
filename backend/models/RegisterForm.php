@@ -12,6 +12,11 @@ class RegisterForm extends Model
     public $email;
     public $password;
 
+    /**
+     * Правила валидации: email корректный и уникальный, пароль от 8 до 72 символов.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -25,6 +30,11 @@ class RegisterForm extends Model
         ];
     }
 
+    /**
+     * Подписи атрибутов для сообщений об ошибках.
+     *
+     * @return array<string, string> атрибут => подпись
+     */
     public function attributeLabels(): array
     {
         return [
@@ -35,6 +45,12 @@ class RegisterForm extends Model
 
     /**
      * Создаёт пользователя вместе с токеном. Вызывать после успешного validate().
+     *
+     * @return User созданный пользователь с access_token
+     * @throws \yii\web\UnprocessableEntityHttpException если сохранить не удалось
+     *         (например, email заняли между validate() и save()); ошибки пользователя
+     *         при этом переносятся в форму
+     * @throws \yii\base\Exception если не удалось сгенерировать ключ, токен или хеш пароля
      */
     public function register(): User
     {

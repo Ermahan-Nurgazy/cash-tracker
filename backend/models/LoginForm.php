@@ -13,6 +13,11 @@ class LoginForm extends Model
     public $email;
     public $password;
 
+    /**
+     * Правила валидации: email приводится к нижнему регистру, оба поля обязательны.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -25,6 +30,9 @@ class LoginForm extends Model
     /**
      * Проверяет учётные данные и выдаёт новый токен (прежний перестаёт действовать).
      * Возвращает null при неверных данных. Вызывать после успешного validate().
+     *
+     * @return User|null пользователь с новым access_token или null, если email или пароль неверны
+     * @throws \yii\base\Exception если не удалось сгенерировать токен или хеш
      */
     public function authenticate(): ?User
     {

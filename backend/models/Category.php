@@ -32,11 +32,21 @@ class Category extends ActiveRecord
 
     public const TYPES = [self::TYPE_EXPENSE, self::TYPE_INCOME];
 
+    /**
+     * Имя таблицы БД.
+     *
+     * @return string имя таблицы с префиксом подключения
+     */
     public static function tableName(): string
     {
         return '{{%category}}';
     }
 
+    /**
+     * Поведения модели: только created_at (updated_at у категорий нет).
+     *
+     * @return array<int, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         return [
@@ -47,6 +57,12 @@ class Category extends ActiveRecord
         ];
     }
 
+    /**
+     * Правила валидации: название уникально для пары «пользователь + тип»,
+     * цвет в формате #RRGGBB.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -71,6 +87,11 @@ class Category extends ActiveRecord
 
     /**
      * Тип нельзя менять, если по категории уже есть операции: их тип должен совпадать с типом категории.
+     *
+     * Встроенный валидатор: добавляет ошибку к атрибуту, исключений не бросает.
+     *
+     * @param string $attribute проверяемый атрибут (type)
+     * @return void
      */
     public function validateTypeChange(string $attribute): void
     {
@@ -79,6 +100,11 @@ class Category extends ActiveRecord
         }
     }
 
+    /**
+     * Подписи атрибутов для сообщений об ошибках.
+     *
+     * @return array<string, string> атрибут => подпись
+     */
     public function attributeLabels(): array
     {
         return [
@@ -89,11 +115,21 @@ class Category extends ActiveRecord
         ];
     }
 
+    /**
+     * Связь с владельцем категории.
+     *
+     * @return ActiveQuery запрос к пользователю (один)
+     */
     public function getUser(): ActiveQuery
     {
         return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
+    /**
+     * Связь с операциями этой категории.
+     *
+     * @return ActiveQuery запрос к операциям (много)
+     */
     public function getTransactions(): ActiveQuery
     {
         return $this->hasMany(Transaction::class, ['category_id' => 'id']);

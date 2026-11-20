@@ -21,6 +21,12 @@ class CategoryController extends OwnedActiveController
 {
     public $modelClass = Category::class;
 
+    /**
+     * Список категорий с необязательным фильтром ?type=expense|income.
+     *
+     * @return ActiveQuery запрос категорий текущего пользователя
+     * @throws BadRequestHttpException если type не expense и не income
+     */
     protected function indexQuery(): ActiveQuery
     {
         $query = parent::indexQuery();
@@ -37,6 +43,11 @@ class CategoryController extends OwnedActiveController
         return $query;
     }
 
+    /**
+     * Сортировка списка категорий: по типу и названию (по умолчанию), либо по дате создания.
+     *
+     * @return array<string, mixed> конфигурация yii\data\Sort
+     */
     protected function sortConfig(): array
     {
         return [
@@ -45,6 +56,13 @@ class CategoryController extends OwnedActiveController
         ];
     }
 
+    /**
+     * Категорию с операциями удалять нельзя.
+     *
+     * @param ActiveRecord $model удаляемая категория (Category)
+     * @return void
+     * @throws ConflictHttpException если по категории есть операции
+     */
     protected function assertDeletable(ActiveRecord $model): void
     {
         /** @var Category $model */

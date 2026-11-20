@@ -11,6 +11,13 @@ use yii\web\BadRequestHttpException;
  */
 trait QueryParamsTrait
 {
+    /**
+     * Читает строковый GET-параметр без пробелов по краям.
+     *
+     * @param string $name имя параметра
+     * @return string|null значение или null, если параметра нет или он пустой
+     * @throws BadRequestHttpException если передан не строка (например, массив)
+     */
     private function stringParam(string $name): ?string
     {
         $value = Yii::$app->request->get($name);
@@ -26,6 +33,13 @@ trait QueryParamsTrait
         return trim($value);
     }
 
+    /**
+     * Читает GET-параметр как неотрицательное целое (не длиннее 9 цифр).
+     *
+     * @param string $name имя параметра
+     * @return int|null значение или null, если параметра нет
+     * @throws BadRequestHttpException если значение не целое число
+     */
     private function intParam(string $name): ?int
     {
         $value = $this->stringParam($name);
@@ -41,6 +55,13 @@ trait QueryParamsTrait
         return (int) $value;
     }
 
+    /**
+     * Читает GET-параметр как существующую дату ГГГГ-ММ-ДД.
+     *
+     * @param string $name имя параметра
+     * @return string|null дата как передана или null, если параметра нет
+     * @throws BadRequestHttpException если формат неверный или такой даты не существует
+     */
     private function dateParam(string $name): ?string
     {
         $value = $this->stringParam($name);

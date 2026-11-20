@@ -11,6 +11,12 @@ namespace app\models;
  */
 trait OwnedByUserTrait
 {
+    /**
+     * Помечает user_id как «небезопасный» (`!user_id`) во всех сценариях: он проверяется,
+     * но не присваивается из массового присваивания.
+     *
+     * @return array<string, array<int, string>> сценарий => список атрибутов
+     */
     public function scenarios(): array
     {
         $scenarios = parent::scenarios();
@@ -28,6 +34,11 @@ trait OwnedByUserTrait
     /**
      * Ответ на POST/PATCH должен совпадать с последующим GET: база приводит числа к формату
      * колонки (numeric(14,2): «1234.5» становится «1234.50»), поэтому запись перечитывается.
+     *
+     * @param bool $insert true при вставке, false при обновлении
+     * @param array<string, mixed> $changedAttributes прежние значения изменённых атрибутов
+     * @return void
+     * @throws \yii\db\StaleObjectException если запись исчезла из БД до перечитывания
      */
     public function afterSave($insert, $changedAttributes): void
     {
@@ -35,6 +46,11 @@ trait OwnedByUserTrait
         $this->refresh();
     }
 
+    /**
+     * Поля JSON-ответа без user_id.
+     *
+     * @return array<string, mixed> поля ответа
+     */
     public function fields(): array
     {
         $fields = parent::fields();

@@ -42,16 +42,32 @@ class Budget extends ActiveRecord
 
     private ?int $spentCents = null;
 
+    /**
+     * Имя таблицы БД.
+     *
+     * @return string имя таблицы с префиксом подключения
+     */
     public static function tableName(): string
     {
         return '{{%budget}}';
     }
 
+    /**
+     * Поведения модели: автоматические created_at и updated_at.
+     *
+     * @return array<int, mixed> конфигурации поведений
+     */
     public function behaviors(): array
     {
         return [TimestampBehavior::class];
     }
 
+    /**
+     * Правила валидации: категория только расходная и своя, месяц в формате ГГГГ-ММ,
+     * бюджет уникален для категории, месяца и валюты.
+     *
+     * @return array<int, array<int|string, mixed>> правила Yii
+     */
     public function rules(): array
     {
         return [
@@ -81,6 +97,12 @@ class Budget extends ActiveRecord
         ];
     }
 
+    /**
+     * Переносит month (ГГГГ-ММ) в period_month (первое число месяца) до валидации,
+     * чтобы проверка уникальности работала по колонке БД.
+     *
+     * @return bool можно ли продолжать валидацию
+     */
     public function beforeValidate(): bool
     {
         if (is_string($this->month) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', trim($this->month))) {
@@ -90,25 +112,45 @@ class Budget extends ActiveRecord
         return parent::beforeValidate();
     }
 
+    /**
+     * После загрузки из БД заполняет month и сбрасывает кэш расхода.
+     *
+     * @return void
+     */
     public function afterFind(): void
     {
         parent::afterFind();
         $this->syncDerived();
     }
 
-    /** После сохранения запись перечитывается (OwnedByUserTrait): пересчитываем производные значения */
+    /**
+     * После сохранения запись перечитывается (OwnedByUserTrait): пересчитываем производные значения.
+     *
+     * @return void
+     */
     public function afterRefresh(): void
     {
         parent::afterRefresh();
         $this->syncDerived();
     }
 
+    /**
+     * Вычисляет month из period_month и сбрасывает закэшированную сумму расхода.
+     *
+     * @return void
+     */
     private function syncDerived(): void
     {
         $this->month = substr((string) $this->period_month, 0, 7);
         $this->spentCents = null;
     }
 
+    /**
+     * Поля JSON-ответа: month вместо period_month, краткая category и расчётные
+     * spent, remaining (может быть отрицательным), percent и status.
+     *
+     * @return array<string, mixed> поля ответа (user_id скрыт)
+     */
     public function fields(): array
     {
         $fields = $this->fieldsWithoutOwner();
@@ -131,6 +173,11 @@ class Budget extends ActiveRecord
 
     /**
      * Потрачено по категории за месяц в валюте бюджета (в копейках).
+     *
+     * Считается суммой операций типа expense по счетам этой валюты; результат кэшируется
+     * до следующей загрузки или перечитывания записи.
+     *
+     * @return int сумма расходов в копейках
      */
     public function getSpentCents(): int
     {
@@ -157,12 +204,21 @@ class Budget extends ActiveRecord
         return $this->spentCents = self::cents($sum);
     }
 
+    /**
+     * Лимит бюджета в копейках.
+     *
+     * @return int лимит в копейках
+     */
     public function limitCents(): int
     {
         return self::cents($this->limit);
     }
 
-    /** Доля лимита в процентах, округлённая до целого; может быть больше 100 */
+    /**
+     * Доля лимита в процентах, округлённая до целого; может быть больше 100.
+     *
+     * @return int процент израсходованного лимита (0, если лимит нулевой)
+     */
     public function percent(): int
     {
         $limit = $this->limitCents();
@@ -170,6 +226,11 @@ class Budget extends ActiveRecord
         return $limit > 0 ? (int) round($this->getSpentCents() * 100 / $limit) : 0;
     }
 
+    /**
+     * Состояние бюджета: превышен, на исходе (от WARNING_PERCENT %) или в норме.
+     *
+     * @return string одна из констант STATUS_EXCEEDED, STATUS_WARNING, STATUS_OK
+     */
     public function status(): string
     {
         $spent = $this->getSpentCents();
@@ -182,6 +243,11 @@ class Budget extends ActiveRecord
         return $spent * 100 >= $limit * self::WARNING_PERCENT ? self::STATUS_WARNING : self::STATUS_OK;
     }
 
+    /**
+     * Подписи атрибутов для сообщений об ошибках.
+     *
+     * @return array<string, string> атрибут => подпись
+     */
     public function attributeLabels(): array
     {
         return [
@@ -192,16 +258,33 @@ class Budget extends ActiveRecord
         ];
     }
 
+    /**
+     * Связь с категорией бюджета.
+     *
+     * @return ActiveQuery запрос к категории (один)
+     */
     public function getCategory(): ActiveQuery
     {
         return $this->hasOne(Category::class, ['id' => 'category_id']);
     }
 
+    /**
+     * Переводит сумму в копейки с округлением.
+     *
+     * @param string|int|float|null $value сумма в основных единицах (null считается нулём)
+     * @return int сумма в копейках
+     */
     private static function cents(string|int|float|null $value): int
     {
         return $value === null ? 0 : (int) round(((float) $value) * 100);
     }
 
+    /**
+     * Форматирует копейки как строку с двумя знаками («1234.50», «-5.00»).
+     *
+     * @param int $cents сумма в копейках, может быть отрицательной
+     * @return string сумма строкой, без превращения в float
+     */
     private static function money(int $cents): string
     {
         $sign = $cents < 0 ? '-' : '';
